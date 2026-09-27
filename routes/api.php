@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AgentController;
+use App\Http\Controllers\Api\ProbeController;
 use App\Http\Controllers\Api\PushController;
 use App\Http\Controllers\Api\V1Controller;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,10 @@ Route::match(['get', 'post'], '/push/{token}', PushController::class)
 
 // Server agent reports.
 Route::post('/agent/report', [AgentController::class, 'report'])->middleware('throttle:30,1')->name('api.agent');
+
+// Remote probes (multi-location monitoring).
+Route::get('/probe/jobs', [ProbeController::class, 'jobs'])->middleware('throttle:30,1')->name('api.probe.jobs');
+Route::post('/probe/results', [ProbeController::class, 'results'])->middleware('throttle:60,1')->name('api.probe.results');
 
 // REST API v1 (Authorization: Bearer wrx_api_…).
 Route::prefix('v1')->middleware(['api.token', 'throttle:120,1'])->group(function () {

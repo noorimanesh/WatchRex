@@ -70,6 +70,19 @@
         @endforelse
     </div>
 
+    @if ($page->allow_subscribers)
+        <div class="card card-pad mt" style="margin-top:24px">
+            @if (request()->hasSession() && session('subscribed'))<div class="alert success small">{{ session('subscribed') }}</div>@endif
+            <form method="POST" action="{{ route('status.subscribe', $page->slug) }}" class="row wrap">
+                @csrf
+                <span class="small muted" style="flex-basis:100%">📬 {{ __('Get e-mail notifications about incidents and maintenance') }}</span>
+                <input class="input ltr" type="email" name="email" required placeholder="you@example.com" style="flex:1;min-width:200px">
+                <button class="btn primary">{{ __('Subscribe') }}</button>
+            </form>
+            @error('email')<div class="error mt-s">{{ $message }}</div>@enderror
+        </div>
+    @endif
+
     <div class="auth-foot" style="margin-top:30px">
         {{ $page->footer_text }}
         <div class="mt-s"><a href="{{ route('status.rss', $page->slug) }}">RSS</a> · <a href="{{ route('status.json', $page->slug) }}">JSON</a>

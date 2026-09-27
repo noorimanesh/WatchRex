@@ -10,6 +10,7 @@ use App\Services\Checks\CheckResult;
 use App\Services\Checks\Diagnoser;
 use App\Services\Checks\HttpProbe;
 use App\Services\Checks\TargetGuard;
+use App\Services\ContentWatcher;
 
 class HttpChecker implements Checker
 {
@@ -68,6 +69,11 @@ class HttpChecker implements Checker
         }
 
         $result = CheckResult::up($ms, "HTTP {$r['status']}", $details + ['causes' => Diagnoser::http(null, $r['timings'])], $meta);
+
+        if ($monitor->setting('detect_changes')) {
+            // Consumed (and removed) by the runner on the hub; never persisted as-is.
+            $result->details['_content'] = ContentWatcher::normalize($r['body']);
+        }
 
         $sslDays = $r['certificate']['days_left'] ?? null;
         $warnDays = (int) $monitor->setting('ssl_warn_days', config('watchrex.defaults.ssl_warn_days'));

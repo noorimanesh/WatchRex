@@ -27,7 +27,7 @@ class Notifier
     {
         $channels = $monitor->channels()->where('is_active', true)->get();
         if ($channels->isEmpty()) {
-            $channels = $this->defaults($monitor->user_id);
+            $channels = $this->defaults($monitor->user_id, $monitor->team_id);
         }
 
         $this->send($channels, [
@@ -61,9 +61,12 @@ class Notifier
         ]))->handle();
     }
 
-    private function defaults(int $userId): Collection
+    /** Default channels of the owner, plus the team's shared defaults for team resources. */
+    private function defaults(int $userId, ?int $teamId = null): Collection
     {
-        return NotificationChannel::where('user_id', $userId)->where('is_active', true)->where('is_default', true)->get();
+        return NotificationChannel::where('is_active', true)->where('is_default', true)
+            ->where(fn ($q) => $q->where('user_id', $userId)->when($teamId, fn ($q) => $q->orWhere('team_id', $teamId)))
+            ->get();
     }
 
     private function send(Collection $channels, array $payload): void

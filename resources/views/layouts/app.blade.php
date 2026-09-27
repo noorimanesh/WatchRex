@@ -35,10 +35,12 @@
             <a href="{{ route('channels.index') }}" class="{{ $nav('channels.*') }}"><x-icon name="bell"/>{{ __('Alert channels') }}</a>
             <a href="{{ route('status-pages.index') }}" class="{{ $nav('status-pages.*') }}"><x-icon name="layout"/>{{ __('Status pages') }}</a>
             <a href="{{ route('maintenance.index') }}" class="{{ $nav('maintenance.*') }}"><x-icon name="wrench"/>{{ __('Maintenance') }}</a>
+            <a href="{{ route('teams.index') }}" class="{{ $nav('teams.*') }}"><x-icon name="users"/>{{ __('Teams') }}</a>
 
             @if ($user->isAdmin())
                 <div class="nav-title">{{ __('Administration') }}</div>
                 <a href="{{ route('admin.users.index') }}" class="{{ $nav('admin.users.*') }}"><x-icon name="users"/>{{ __('Users') }}</a>
+                <a href="{{ route('admin.probes.index') }}" class="{{ $nav('admin.probes.*') }}"><x-icon name="globe"/>{{ __('Probe locations') }}</a>
                 <a href="{{ route('admin.system') }}" class="{{ $nav('admin.system') }}"><x-icon name="settings"/>{{ __('System health') }}</a>
                 <a href="{{ route('admin.audit') }}" class="{{ $nav('admin.audit') }}"><x-icon name="shield"/>{{ __('Audit log') }}</a>
             @endif

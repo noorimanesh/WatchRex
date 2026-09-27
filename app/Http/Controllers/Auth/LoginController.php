@@ -51,6 +51,11 @@ class LoginController extends Controller
 
         RateLimiter::clear($key);
 
+        // With SSO enforced, only administrators keep password access (break-glass).
+        if (config('watchrex.sso.enabled') && config('watchrex.sso.disable_password_login') && ! $user->isAdmin()) {
+            throw ValidationException::withMessages(['email' => __('Please sign in with :p.', ['p' => config('watchrex.sso.label')])]);
+        }
+
         if ($user->hasTwoFactor()) {
             $request->session()->put('2fa:user', $user->id);
             $request->session()->put('2fa:remember', $request->boolean('remember'));

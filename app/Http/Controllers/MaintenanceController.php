@@ -21,7 +21,7 @@ class MaintenanceController extends Controller
     {
         $window = new MaintenanceWindow(['starts_at' => now()->addHour()->startOfHour(), 'ends_at' => now()->addHours(2)->startOfHour()]);
 
-        return view('maintenance.form', ['window' => $window, 'monitors' => Monitor::visibleTo($request->user())->orderBy('name')->get(['id', 'name']), 'selected' => []]);
+        return view('maintenance.form', ['window' => $window, 'monitors' => Monitor::manageableBy($request->user())->orderBy('name')->get(['id', 'name']), 'selected' => [], 'teams' => $this->assignableTeams()]);
     }
 
     public function store(Request $request)
@@ -40,7 +40,8 @@ class MaintenanceController extends Controller
 
         return view('maintenance.form', [
             'window' => $maintenance,
-            'monitors' => Monitor::where('user_id', $maintenance->user_id)->orderBy('name')->get(['id', 'name']),
+            'monitors' => Monitor::manageableBy($request->user())->orderBy('name')->get(['id', 'name']),
+            'teams' => $this->assignableTeams(),
             'selected' => $maintenance->monitors()->pluck('monitors.id')->all(),
         ]);
     }
@@ -48,7 +49,7 @@ class MaintenanceController extends Controller
     public function update(Request $request, MaintenanceWindow $maintenance)
     {
         $this->authorizeOwner($maintenance);
-        [$data, $ids] = $this->validated($request, $maintenance->user_id);
+        [$data, $ids] = $this->validated($request);
         $maintenance->update($data);
         $maintenance->monitors()->sync($ids);
 
@@ -63,7 +64,7 @@ class MaintenanceController extends Controller
         return redirect()->route('maintenance.index')->with('success', __('Maintenance window deleted.'));
     }
 
-    private function validated(Request $request, ?int $ownerId = null): array
+    private function validated(Request $request): array
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],
@@ -72,12 +73,13 @@ class MaintenanceController extends Controller
             'ends_at' => ['required', 'date', 'after:starts_at'],
             'monitors' => ['required', 'array', 'min:1'],
             'monitors.*' => ['integer'],
+            'team_id' => $this->teamRule(),
         ]);
 
         $tz = $request->user()->timezone ?: config('app.timezone');
         $data['starts_at'] = Carbon::parse($data['starts_at'], $tz)->utc();
         $data['ends_at'] = Carbon::parse($data['ends_at'], $tz)->utc();
-        $ids = ($ownerId ? Monitor::where('user_id', $ownerId) : Monitor::visibleTo($request->user()))->whereIn('id', $data['monitors'])->pluck('id')->all();
+        $ids = Monitor::manageableBy($request->user())->whereIn('id', $data['monitors'])->pluck('id')->all();
         unset($data['monitors']);
 
         return [$data, $ids];

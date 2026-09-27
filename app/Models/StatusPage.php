@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['slug', 'title', 'description', 'custom_domain', 'logo_url', 'accent', 'footer_text', 'is_public', 'show_uptime', 'show_response', 'hide_branding'])]
+#[Fillable(['team_id', 'slug', 'title', 'description', 'custom_domain', 'logo_url', 'accent', 'footer_text', 'is_public', 'show_uptime', 'show_response', 'hide_branding', 'allow_subscribers'])]
 class StatusPage extends Model
 {
+    use BelongsToTenant;
+
     protected function casts(): array
     {
         return [
@@ -21,19 +23,14 @@ class StatusPage extends Model
         ];
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
     public function monitors(): BelongsToMany
     {
         return $this->belongsToMany(Monitor::class)->withPivot(['sort', 'display_name'])->orderByPivot('sort');
     }
 
-    public function scopeVisibleTo(Builder $query, User $user): Builder
+    public function subscribers(): HasMany
     {
-        return $user->isAdmin() ? $query : $query->where('user_id', $user->id);
+        return $this->hasMany(StatusPageSubscriber::class);
     }
 
     public function publicUrl(): string

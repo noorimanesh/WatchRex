@@ -22,6 +22,10 @@ Laravel 13 · PHP 8.3+ · بدون Node/Build · RTL و تقویم شمسی · M
   - [DirectAdmin](#directadmin)
   - [Plesk](#plesk)
 - [نصب ایجنت سرور](#نصب-ایجنت-سرور)
+- [پایش چندموقعیتی (پراب‌ها)](#پایش-چندموقعیتی-پراب‌ها)
+- [تیم‌ها](#تیم‌ها)
+- [ورود یکپارچه (SSO)](#ورود-یکپارچه-sso)
+- [تشخیص تغییر محتوا و ظاهر](#تشخیص-تغییر-محتوا-و-ظاهر)
 - [مانیتورهای Push برای کران‌جاب](#مانیتورهای-push-برای-کرانجاب)
 - [REST API](#rest-api)
 - [امنیت](#امنیت)
@@ -72,7 +76,16 @@ CPU، RAM، Swap، IO-wait، Load، دیسک‌ها و inode، شبکه، دما
 آپ‌تایم ۲۴ ساعت، ۷، ۳۰، ۹۰ و ۳۶۵ روز؛ نمودار زمان پاسخ (1h/24h/7d/30d) با میانگین/کمینه/بیشینه/P95؛ نوار ۹۰ روزه؛ رخدادها با خط زمانی، Acknowledge و یادداشت؛ Badge‌های SVG.
 
 ### صفحات وضعیت عمومی
-دامنه اختصاصی (`status.company.com`)، لوگو و رنگ برند، White-label، نمایش نگهداری‌های زمان‌بندی‌شده و رخدادها، **JSON API و RSS**.
+دامنه اختصاصی (`status.company.com`)، لوگو و رنگ برند، White-label، نمایش نگهداری‌های زمان‌بندی‌شده و رخدادها، **JSON API و RSS** و **عضویت ایمیلی بازدیدکنندگان** (تأیید دومرحله‌ای، اعلان شروع/رفع رخداد و به‌روزرسانی‌های عمومی، لغو عضویت یک‌کلیکی).
+
+### پایش چندموقعیتی
+هر مانیتور می‌تواند هم‌زمان از این سرور و چند **پراب** (ایران، آلمان، هلند، …) بررسی شود. اگر فقط از یک موقعیت قطع باشد، به جای Down با پیام «احتمالاً مشکل شبکه، ISP یا جغرافیایی/فیلترینگ» به‌عنوان افت کیفیت گزارش می‌شود. حد نصاب قابل تنظیم است (هر موقعیت / اکثریت / همه).
+
+### تیم‌ها و SSO
+تیم با نقش‌های مالک، ادمین، توسعه‌دهنده و بیننده؛ هر منبع می‌تواند خصوصی بماند یا با یک تیم به اشتراک گذاشته شود. ورود یکپارچه OpenID Connect (Keycloak، Microsoft Entra ID، Google Workspace، Authentik، Okta).
+
+### تشخیص تغییر (Defacement)
+مقایسه متن قابل‌مشاهده صفحه در هر بررسی با diff خط‌به‌خط و آستانه درصدی و الگوی نادیده‌گیری؛ و به‌صورت اختیاری **اسکرین‌شات با Chrome بدون رابط** و مقایسه پیکسلی.
 
 ### چندکاربره و تجاری
 نقش‌ها (مدیر / کاربر / بیننده فقط‌خواندنی)، پلن‌ها (Free / Pro / Business / Enterprise) با سقف مانیتور، حداقل بازه، سرور، دامنه و صفحه وضعیت — قابل override برای هر کاربر.
@@ -194,6 +207,61 @@ curl -fsSL https://watch.example.com/agent/install.sh | sudo bash -s -- wrx_XXXX
 - حذف: `systemctl disable --now watchrex-agent.timer; rm -rf /opt/watchrex /etc/watchrex /var/lib/watchrex /etc/systemd/system/watchrex-agent.*`
 - اگر CSF دارید، آدرس WatchRex را در خروجی (Outgoing) مجاز کنید.
 
+## پایش چندموقعیتی (پراب‌ها)
+1. در WatchRex: **مدیریت → موقعیت‌های پایش → افزودن پراب** (مثلاً `de-falkenstein`, کد کشور `DE`). توکن فقط یک بار نمایش داده می‌شود.
+2. روی سرور مقصد، همین کد را مستقر کنید (`composer install --no-dev`) — **دیتابیس لازم نیست**. در `.env`:
+   ```env
+   APP_KEY=base64:…            # php artisan key:generate
+   WATCHREX_HUB_URL=https://watch.example.com
+   WATCHREX_PROBE_TOKEN=wrx_probe_…
+   WATCHREX_PROBE_CONCURRENCY=4
+   CACHE_STORE=file
+   QUEUE_CONNECTION=sync
+   ```
+3. به‌صورت سرویس اجرا کنید:
+   ```ini
+   # /etc/systemd/system/watchrex-probe.service
+   [Service]
+   User=www-data
+   WorkingDirectory=/opt/watchrex
+   ExecStart=/usr/bin/php artisan watchrex:probe
+   Restart=always
+   [Install]
+   WantedBy=multi-user.target
+   ```
+4. در فرم مانیتور، بخش «موقعیت‌های بررسی» پراب‌ها و حد نصاب را انتخاب کنید.
+
+> پراب هر ۶۰ ثانیه فهرست کار را از هاب می‌گیرد، بررسی‌ها را (با `pcntl` به‌صورت موازی) اجرا می‌کند و نتایج را برمی‌گرداند. اطلاعات ورود مانیتورها از طریق HTTPS برای پراب ارسال می‌شود؛ پراب‌ها را فقط روی سرورهای مورد اعتماد اجرا کنید.
+
+## تیم‌ها
+**تیم‌ها → تیم جدید**، سپس اعضا را با ایمیل (کاربران موجود) اضافه کنید. در فرم هر مانیتور، سرور، دامنه، کانال هشدار، صفحه وضعیت یا بازه نگهداری گزینه «اشتراک با تیم» وجود دارد. کانال‌های پیش‌فرض تیم برای منابع تیم هم هشدار می‌گیرند.
+
+| نقش | مشاهده | ایجاد/ویرایش منابع تیم | مدیریت اعضا |
+|---|---|---|---|
+| مالک / ادمین | ✓ | ✓ | ✓ |
+| توسعه‌دهنده | ✓ | ✓ | — |
+| بیننده | ✓ | — | — |
+
+## ورود یکپارچه (SSO)
+```env
+OIDC_ENABLED=true
+OIDC_LABEL="Fabapars SSO"
+OIDC_ISSUER=https://sso.example.com/realms/fabapars   # آدرس issuer (discovery خودکار)
+OIDC_CLIENT_ID=watchrex
+OIDC_CLIENT_SECRET=…
+OIDC_AUTO_CREATE=true            # ساخت خودکار کاربر در اولین ورود
+OIDC_ALLOWED_DOMAINS=fabapars.com
+OIDC_DISABLE_PASSWORD_LOGIN=true # فقط مدیران کل با رمز وارد می‌شوند (break-glass)
+```
+Redirect URI در IdP: `https://watch.example.com/auth/sso/callback`. جریان Authorization Code با PKCE، و state/nonce/iss/aud/exp اعتبارسنجی می‌شوند.
+
+## تشخیص تغییر محتوا و ظاهر
+در فرم مانیتور HTTP: «هشدار هنگام تغییر متن قابل‌مشاهده صفحه»، آستانه درصد و regex برای نادیده گرفتن بخش‌های پویا (ساعت، شمارنده بازدید). برای مقایسه تصویری:
+```env
+WATCHREX_CHROME_PATH=/usr/bin/chromium        # apt install chromium
+WATCHREX_SCREENSHOTS_FOR_TENANTS=false        # پیش‌فرض فقط برای مدیران (مرورگر به منابع داخلی دسترسی دارد)
+```
+
 ## مانیتورهای Push برای کران‌جاب
 ```bash
 # بکاپ شبانه — اگر تا بازه + مهلت خبری نشود، هشدار
@@ -229,12 +297,12 @@ curl -H "Authorization: Bearer wrx_api_…" https://watch.example.com/api/v1/sum
 | `php artisan watchrex:dispatch [--sync]` | ارسال بررسی‌های سررسید به صف |
 | `php artisan watchrex:domains [--all]` | بروزرسانی اطلاعات دامنه‌ها |
 | `php artisan watchrex:prune` | پاک‌سازی داده‌های قدیمی |
+| `php artisan watchrex:probe [--once]` | اجرا به‌عنوان پراب راه دور |
 
 ## نقشه راه
-- پراب‌های چندموقعیتی (ایران / آلمان / هلند / …) — ستون `location` در heartbeats آماده است
-- تشخیص تغییر ظاهری صفحه (Screenshot diff)
-- SSO (OIDC/SAML) و تیم‌ها/سازمان‌ها
-- اشتراک ایمیلی در صفحه وضعیت
+- SAML 2.0 در کنار OIDC
+- اپلیکیشن موبایل / Push notification بومی
+- گزارش SLA ماهانه PDF برای مشتریان
 
 ---
 
@@ -247,7 +315,10 @@ curl -H "Authorization: Bearer wrx_api_…" https://watch.example.com/api/v1/sum
 - **Domain intelligence**: expiry (RDAP/WHOIS incl. `.ir`), DNS records with diffed change alerts, SSL details, subdomain discovery (CT logs + DNS), SPF/DKIM/DMARC/MTA-STS score, hosting IP + geo/ASN, IP history, blacklist checks.
 - **Dependency-free bash agent**: CPU/RAM/disk/load/network/services/Docker plus mail queue, sent/bounced/deferred/rejected mail, IMAP/POP3/SMTP login success & failures (top IPs/users) and cPanel/DirectAdmin/Plesk account disk usage.
 - **Alerts**: e-mail, Telegram, Bale, Kavenegar SMS, WhatsApp, Slack, Discord, Teams, ntfy, signed webhooks — sent in each user's language.
-- **Status pages** with custom domains, branding, white-label, JSON and RSS; SVG badges; REST API with scoped tokens.
+- **Status pages** with custom domains, branding, white-label, JSON, RSS and double opt-in e-mail subscriptions; SVG badges; REST API with scoped tokens.
+- **Multi-location probes**: `php artisan watchrex:probe` on any server (no database) pulls jobs from the hub; quorum-based evaluation turns single-location failures into "network/ISP/geo-specific" warnings.
+- **Teams** (owner/admin/developer/viewer) with per-resource sharing, and **OpenID Connect SSO** (PKCE, state/nonce, domain allow-list, optional auto-provisioning).
+- **Change detection**: visible-text diffing on every check plus optional headless-Chrome screenshots with pixel comparison.
 - **Security**: TOTP 2FA, rate limiting, encrypted credentials, hashed tokens, SSRF guard, strict CSP, audit log, read-only viewer role.
 - **Lightweight**: no Node/build step, server-rendered SVG charts, daily aggregates for long-range uptime, SQLite-friendly.
 

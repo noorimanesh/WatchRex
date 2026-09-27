@@ -5,16 +5,22 @@ namespace App\Http\Controllers;
 use App\Enums\MonitorStatus;
 use App\Enums\MonitorType;
 use App\Http\Requests\MonitorRequest;
+use App\Jobs\CaptureScreenshot;
 use App\Models\AuditLog;
+use App\Models\ContentSnapshot;
 use App\Models\Monitor;
 use App\Models\NotificationChannel;
+use App\Models\Probe;
 use App\Models\Server;
 use App\Models\User;
+use App\Services\ContentWatcher;
+use App\Services\LocationNames;
 use App\Services\MonitorList;
 use App\Services\MonitorRunner;
 use App\Services\Uptime;
 use App\Support\Svg;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MonitorController extends Controller
@@ -105,6 +111,9 @@ class MonitorController extends Controller
             'events' => $monitor->heartbeats()->where('status', '!=', MonitorStatus::HB_UP)->latest('id')->limit(25)->get(),
             'beats' => MonitorList::recentBeats([$monitor->id], 60)->get($monitor->id, collect()),
             'incidents' => $monitor->incidents()->latest('started_at')->limit(10)->get(),
+            'locations' => $this->locations($monitor),
+            'textChanges' => $monitor->snapshots()->where('kind', 'text')->where('change_percent', '>', 0)->latest('id')->limit(5)->get(['id', 'change_percent', 'diff', 'created_at']),
+            'visuals' => $monitor->snapshots()->where('kind', 'visual')->latest('id')->limit(2)->get(),
         ]);
     }
 
@@ -168,6 +177,35 @@ class MonitorController extends Controller
         return back()->with($result->isDown() ? 'error' : 'success', strtoupper($result->status->value).' — '.$result->message);
     }
 
+    public function snapshot(Monitor $monitor, ContentSnapshot $snapshot)
+    {
+        $this->authorizeOwner($monitor);
+        abort_unless($snapshot->monitor_id === $monitor->id && $snapshot->path && Storage::disk('local')->exists($snapshot->path), 404);
+
+        return response()->file(Storage::disk('local')->path($snapshot->path), ['Content-Type' => 'image/png', 'Cache-Control' => 'private, max-age=86400']);
+    }
+
+    public function screenshot(Monitor $monitor)
+    {
+        $this->authorizeOwner($monitor);
+        abort_unless($monitor->type->usesUrl() && ContentWatcher::screenshotsAllowed($monitor->loadMissing('user')), 403);
+        CaptureScreenshot::dispatch($monitor->id)->onQueue(config('watchrex.queues.domains'));
+
+        return back()->with('success', __('Screenshot requested. It appears here within a minute.'));
+    }
+
+    /** Latest result per location, freshest first, with labels. */
+    private function locations(Monitor $monitor): array
+    {
+        $rows = [];
+        foreach ((array) $monitor->metaValue('locations', []) as $key => $row) {
+            $rows[] = $row + ['key' => $key, 'label' => LocationNames::label($key), 'stale' => ($row['at'] ?? 0) < time() - max(180, $monitor->interval * 3)];
+        }
+        usort($rows, fn ($a, $b) => [$a['stale'], $a['label']] <=> [$b['stale'], $b['label']]);
+
+        return $rows;
+    }
+
     public function regenerateToken(Monitor $monitor)
     {
         $this->authorizeOwner($monitor);
@@ -182,25 +220,32 @@ class MonitorController extends Controller
     private function formData(Request $request, Monitor $monitor): array
     {
         $user = $request->user();
-        $owner = $monitor->exists ? $monitor->user_id : $user->id;
 
         return [
             'monitor' => $monitor,
             'types' => MonitorType::cases(),
-            'channels' => NotificationChannel::where('user_id', $owner)->orderBy('name')->get(),
-            'servers' => Server::where('user_id', $owner)->orderBy('name')->get(['id', 'name']),
-            'parents' => Monitor::where('user_id', $owner)->when($monitor->exists, fn ($q) => $q->whereKeyNot($monitor->id))->orderBy('name')->get(['id', 'name']),
+            'channels' => NotificationChannel::visibleTo($user)->orderBy('name')->get(),
+            'servers' => Server::visibleTo($user)->orderBy('name')->get(['id', 'name']),
+            'parents' => Monitor::visibleTo($user)->when($monitor->exists, fn ($q) => $q->whereKeyNot($monitor->id))->orderBy('name')->get(['id', 'name']),
             'groups' => MonitorList::facets($user)['groups'],
             'minInterval' => $user->limit('min_interval') ?? 20,
+            'teams' => $this->assignableTeams(),
+            'probes' => Probe::where('is_active', true)->orderBy('name')->get(),
+            'selectedProbes' => $monitor->exists ? $monitor->probes()->pluck('probes.id')->all() : [],
+            'screenshots' => (bool) config('watchrex.screenshots.chrome') && ($user->isAdmin() || config('watchrex.screenshots.tenants')),
         ];
     }
 
     private function syncChannels(Request $request, Monitor $monitor): void
     {
-        $ids = NotificationChannel::where('user_id', $monitor->user_id)
+        $ids = NotificationChannel::visibleTo($request->user())
             ->whereIn('id', (array) $request->input('channels', []))
             ->pluck('id');
 
         $monitor->channels()->sync($ids);
+
+        if (! $monitor->type->isPassive()) {
+            $monitor->probes()->sync(Probe::where('is_active', true)->whereIn('id', (array) $request->input('probes', []))->pluck('id'));
+        }
     }
 }

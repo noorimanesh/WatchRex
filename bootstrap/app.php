@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureUserIsActive::class,
             EnsureCanWrite::class,
         ]);
+        // Subscriptions may be posted from custom status-page domains (no shared session).
+        $middleware->validateCsrfTokens(except: ['status/*/subscribe']);
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'api.token' => AuthenticateApiToken::class,

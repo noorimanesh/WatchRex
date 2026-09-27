@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\NotifySubscribers;
 use App\Models\AuditLog;
 use App\Models\Incident;
 use Illuminate\Http\Request;
@@ -35,6 +36,10 @@ class IncidentController extends Controller
         $this->authorizeOwner($incident);
         $data = $request->validate(['message' => ['required', 'string', 'max:2000'], 'public' => ['nullable', 'boolean']]);
         $incident->timeline($request->boolean('public') ? 'public' : 'note', $data['message'], $request->user()->id);
+
+        if ($request->boolean('public')) {
+            NotifySubscribers::dispatch($incident->id, 'update', $data['message'])->onQueue(config('watchrex.queues.alerts'));
+        }
 
         return back()->with('success', __('Update added.'));
     }

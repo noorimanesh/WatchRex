@@ -21,7 +21,7 @@ class DomainController extends Controller
             ->orderBy('expires_at')
             ->get();
 
-        return view('domains.index', ['domains' => $domains]);
+        return view('domains.index', ['domains' => $domains, 'teams' => $this->assignableTeams()]);
     }
 
     public function store(Request $request)
@@ -31,13 +31,14 @@ class DomainController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:253', 'regex:/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/', Rule::unique('domains')->where('user_id', $user->id)],
             'warn_days' => ['nullable', 'integer', 'between:1,120'],
+            'team_id' => $this->teamRule(),
         ]);
 
         if (! $user->withinLimit('max_domains', $user->domains()->count())) {
             return back()->withErrors(['name' => __('Your plan domain limit has been reached.')]);
         }
 
-        $domain = $user->domains()->create(['name' => $data['name'], 'warn_days' => $data['warn_days'] ?? config('watchrex.defaults.domain_warn_days')]);
+        $domain = $user->domains()->create(['name' => $data['name'], 'team_id' => $data['team_id'] ?? null, 'warn_days' => $data['warn_days'] ?? config('watchrex.defaults.domain_warn_days')]);
         RefreshDomain::dispatch($domain->id)->onQueue(config('watchrex.queues.domains'));
         AuditLog::record('domain.created', $domain, ['name' => $domain->name]);
 
@@ -103,6 +104,7 @@ class DomainController extends Controller
             'settings' => ['verify_ssl' => true, 'follow_redirects' => true, 'anomaly' => true, 'notify_warning' => true, 'expected_status' => '200-399'],
         ]);
         $monitor->user_id = $user->id;
+        $monitor->team_id = $domain->team_id;
         $monitor->next_check_at = now();
         $monitor->save();
 
