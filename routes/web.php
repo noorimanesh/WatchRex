@@ -29,6 +29,8 @@ Route::get('/badge/{uuid}/{kind}.svg', [PublicStatusController::class, 'badge'])
     ->whereIn('kind', ['status', 'uptime', 'response'])->middleware('throttle:120,1')->name('badge');
 Route::get('/agent/install.sh', [AgentInstallController::class, 'installer'])->name('agent.installer');
 Route::get('/agent/watchrex-agent.sh', [AgentInstallController::class, 'agent'])->name('agent.script');
+Route::get('/agent/install.ps1', [AgentInstallController::class, 'windowsInstaller'])->name('agent.installer.windows');
+Route::get('/agent/watchrex-agent.ps1', [AgentInstallController::class, 'windowsAgent'])->name('agent.script.windows');
 
 Route::post('/status/{slug}/subscribe', [SubscriberController::class, 'subscribe'])->middleware('throttle:5,1')->name('status.subscribe');
 Route::get('/status/{slug}/confirm/{token}', [SubscriberController::class, 'confirm'])->name('status.confirm');

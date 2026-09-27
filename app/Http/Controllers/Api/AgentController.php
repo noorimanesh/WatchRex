@@ -26,7 +26,9 @@ class AgentController extends Controller
         $str = fn ($v, $len = 120) => is_scalar($v) ? mb_substr(strip_tags((string) $v), 0, $len) : null;
 
         $mail = (array) ($p['mail'] ?? []);
+        $security = (array) ($p['security'] ?? []);
         $latest = [
+            'platform' => ($p['platform'] ?? 'linux') === 'windows' ? 'windows' : 'linux',
             'hostname' => $str($p['hostname'] ?? null),
             'os' => $str($p['os'] ?? null),
             'kernel' => $str($p['kernel'] ?? null),
@@ -70,6 +72,13 @@ class AgentController extends Controller
                 'recent_bounces' => array_map(fn ($l) => $str($l, 300), array_slice((array) ($mail['recent_bounces'] ?? []), 0, 15)),
             ],
             'ssh_failed' => $int($p['ssh_failed'] ?? null),
+            'security' => $security ? [
+                'source' => $str($security['source'] ?? null, 20),
+                'failed_logons' => $int($security['failed_logons'] ?? null),
+                'remote_logons' => $int($security['remote_logons'] ?? null),
+                'failed_ips' => array_map(fn ($r) => ['ip' => $str($r['ip'] ?? null, 45), 'count' => $int($r['count'] ?? 0)], array_slice((array) ($security['failed_ips'] ?? []), 0, 10)),
+                'failed_users' => array_map(fn ($r) => ['user' => $str($r['user'] ?? null, 120), 'count' => $int($r['count'] ?? 0)], array_slice((array) ($security['failed_users'] ?? []), 0, 10)),
+            ] : null,
             'accounts' => array_map(fn ($a) => [
                 'user' => $str($a['user'] ?? null, 64), 'domain' => $str($a['domain'] ?? null, 255),
                 'disk_used_mb' => $num($a['disk_used_mb'] ?? null), 'disk_limit_mb' => $num($a['disk_limit_mb'] ?? null),

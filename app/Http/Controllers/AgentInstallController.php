@@ -15,12 +15,23 @@ class AgentInstallController extends Controller
         return $this->script('watchrex-agent.sh');
     }
 
-    private function script(string $file)
+    public function windowsInstaller()
+    {
+        return $this->script('install.ps1', 'text/plain');
+    }
+
+    public function windowsAgent()
+    {
+        return $this->script('watchrex-agent.ps1', 'text/plain');
+    }
+
+    private function script(string $file, string $type = 'text/x-shellscript')
     {
         $body = str_replace('__WATCHREX_URL__', rtrim(config('app.url'), '/'), file_get_contents(resource_path('agent/'.$file)));
 
         return response($body, 200, [
-            'Content-Type' => 'text/x-shellscript; charset=UTF-8',
+            'Content-Type' => $type.'; charset=UTF-8',
+            'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'no-store',
         ]);
     }

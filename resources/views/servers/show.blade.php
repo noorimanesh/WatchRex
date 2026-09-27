@@ -7,10 +7,12 @@
     $disks = $server->stat('disks', []);
     $accounts = collect($server->stat('accounts', []))->sortByDesc('disk_used_mb');
     $installCmd = 'curl -fsSL '.route('agent.installer').' | sudo bash -s -- '.($token ?? 'YOUR_AGENT_TOKEN').' '.$server->report_interval;
+    $winCmd = 'iwr -UseBasicParsing '.route('agent.installer.windows').' -OutFile $env:TEMP\\wrx.ps1; & $env:TEMP\\wrx.ps1 -Token '.($token ?? 'YOUR_AGENT_TOKEN');
+    $security = $server->stat('security');
 @endphp
 <div class="page-head">
     <div>
-        <div class="row wrap"><h1>{{ $server->name }}</h1><span class="badge {{ $online ? 'up' : 'down' }}"><span class="dot {{ $online ? 'up' : 'down' }}"></span>{{ $online ? __('Online') : __('Offline') }}</span><span class="chip">{{ $server->panelLabel() }}</span></div>
+        <div class="row wrap"><h1>{{ $server->name }}</h1><span class="badge {{ $online ? 'up' : 'down' }}"><span class="dot {{ $online ? 'up' : 'down' }}"></span>{{ $online ? __('Online') : __('Offline') }}</span><span class="chip">{{ $server->panelLabel() }}</span>@if ($server->stat('platform') === 'windows')<span class="chip">🪟 Windows</span>@endif</div>
         <div class="sub ltr" style="text-align:start">{{ $server->hostname ?? '—' }} · {{ $server->ip ?? '—' }} · {{ $server->os ?? '' }} {{ $server->stat('kernel') ? '· '.$server->stat('kernel') : '' }}</div>
         <div class="small muted">{{ __('Last report') }}: {{ $server->last_seen_at?->diffForHumans() ?? __('never') }} @if ($server->stat('uptime')) · {{ __('Uptime') }} {{ Fmt::duration((int) $server->stat('uptime')) }}@endif @if ($server->agent_version) · agent {{ $server->agent_version }}@endif</div>
     </div>
@@ -31,9 +33,20 @@
         @else
             <p class="small muted">{{ __('The token was shown once when the server was created. Generate a new one if you lost it.') }}</p>
         @endif
-        <p class="small muted">{{ __('Run as root on the server (works on cPanel/WHM, DirectAdmin, Plesk, CyberPanel, Ubuntu, Debian, AlmaLinux, Rocky, CentOS):') }}</p>
-        <div class="secret" id="install-cmd">{{ $installCmd }}</div>
-        <button class="btn sm mt-s" data-copy="#install-cmd">{{ __('Copy') }}</button>
+        <div data-tabs>
+            <div class="tabs"><button type="button" data-tab="linux">🐧 Linux</button><button type="button" data-tab="windows">🪟 Windows Server</button></div>
+            <div data-tab-panel="linux">
+                <p class="small muted">{{ __('Run as root on the server (works on cPanel/WHM, DirectAdmin, Plesk, CyberPanel, Ubuntu, Debian, AlmaLinux, Rocky, CentOS):') }}</p>
+                <div class="secret" id="install-cmd">{{ $installCmd }}</div>
+                <button class="btn sm mt-s" data-copy="#install-cmd">{{ __('Copy') }}</button>
+            </div>
+            <div data-tab-panel="windows">
+                <p class="small muted">{{ __('Run in an elevated PowerShell (Windows Server 2016+, Plesk for Windows, IIS, SQL Server, Exchange):') }}</p>
+                <div class="secret" id="install-win">{{ $winCmd }}</div>
+                <button class="btn sm mt-s" data-copy="#install-win">{{ __('Copy') }}</button>
+                <p class="small faint mt-s">{{ __('Installs a Scheduled Task running as SYSTEM every minute. Uninstall with -Uninstall.') }}</p>
+            </div>
+        </div>
     </div>
 </div>
 @endif
@@ -61,6 +74,24 @@
         <div class="card"><div class="card-head"><h3>{{ $label }}</h3></div><div class="card-body"><x-chart :chart="$charts[$k]" :height="140" :color="$color" :date-format="$hours > 24 ? 'm/d' : 'H:i'" /></div></div>
     @endforeach
 </div>
+
+@if ($security)
+<div class="grid g-3 mt">
+    <div class="card card-pad">
+        <div class="label">🛡️ {{ __('Failed logons (last interval)') }}</div>
+        <div class="stat" style="padding:0"><div class="value {{ ($security['failed_logons'] ?? 0) > 0 ? 'text-down' : 'text-up' }}">{{ number_format($security['failed_logons'] ?? 0) }}</div>
+            <div class="hint">{{ __('Remote desktop logons') }}: {{ $security['remote_logons'] ?? 0 }}</div></div>
+    </div>
+    <div class="card">
+        <div class="card-head"><h3>{{ __('Top failed logon IPs') }}</h3></div>
+        <div class="card-body small">@forelse ($security['failed_ips'] ?? [] as $r)<div class="row between"><span class="ltr mono">{{ $r['ip'] }}</span><b>{{ $r['count'] }}</b></div>@empty<span class="muted">{{ __('None') }}</span>@endforelse</div>
+    </div>
+    <div class="card">
+        <div class="card-head"><h3>{{ __('Targeted accounts') }}</h3></div>
+        <div class="card-body small">@forelse ($security['failed_users'] ?? [] as $r)<div class="row between"><span class="ltr truncate">{{ $r['user'] }}</span><b>{{ $r['count'] }}</b></div>@empty<span class="muted">{{ __('None') }}</span>@endforelse</div>
+    </div>
+</div>
+@endif
 
 @if ($server->stat('mail.mta') || $mail['login_ok'] || $mail['login_failed'])
 <div class="grid g-main mt">
@@ -105,7 +136,7 @@
                 @forelse ($mailLatest['failed_users'] ?? [] as $r)<div class="row between"><span class="ltr truncate">{{ $r['user'] }}</span><b>{{ $r['count'] }}</b></div>@empty<span class="muted">{{ __('None') }}</span>@endforelse
             </div>
         </div>
-        @if ($server->stat('ssh_failed'))
+        @if ($server->stat('ssh_failed') && $server->stat('platform') !== 'windows')
             <div class="card card-pad small">SSH: <b class="text-down">{{ $server->stat('ssh_failed') }}</b> {{ __('failed password attempts in the last interval') }}</div>
         @endif
     </div>

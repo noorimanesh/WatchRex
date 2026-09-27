@@ -97,4 +97,36 @@ class ApiTest extends TestCase
         \Cache::flush();
         $this->get('/status/acme')->assertNotFound();
     }
+
+    public function test_windows_agent_report_with_security_block(): void
+    {
+        $user = User::factory()->create();
+        $server = new Server(['name' => 'WIN-IIS-01', 'report_interval' => 60]);
+        $server->user_id = $user->id;
+        $token = $server->rotateToken();
+        $server->save();
+
+        $this->withToken($token)->postJson('/api/agent/report', [
+            'platform' => 'windows', 'os' => 'Microsoft Windows Server 2022', 'cpu' => 37, 'ram' => 75, 'disk' => 85, 'load' => [2],
+            'services' => ['W3SVC' => 'active', 'SMTPSVC' => 'inactive', 'iis/shop' => 'active'],
+            'security' => ['source' => 'windows', 'failed_logons' => 150, 'remote_logons' => 1,
+                'failed_ips' => [['ip' => '185.220.101.4', 'count' => 140]], 'failed_users' => [['user' => 'administrator', 'count' => 150]]],
+        ])->assertOk();
+
+        $server->refresh();
+        $this->assertSame('windows', $server->stat('platform'));
+        $problems = ServerHealth::problems($server);
+        $this->assertContains('Service SMTPSVC is inactive', $problems);
+        $this->assertTrue(collect($problems)->contains(fn ($p) => str_contains($p, 'Failed logins 150')));
+
+        $this->actingAs($user)->get("/servers/{$server->id}")->assertOk()->assertSee('185.220.101.4')->assertSee('administrator');
+    }
+
+    public function test_windows_agent_scripts_are_served_with_hub_url(): void
+    {
+        $this->get('/agent/install.ps1')->assertOk()->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSee("\$Url = '".rtrim(config('app.url'), '/')."'", false)
+            ->assertDontSee('__WATCHREX_URL__');
+        $this->get('/agent/watchrex-agent.ps1')->assertOk()->assertSee('Win32_OperatingSystem');
+    }
 }

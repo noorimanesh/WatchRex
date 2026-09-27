@@ -82,6 +82,7 @@ class Server extends Model
             'cyberpanel' => 'CyberPanel',
             'aapanel' => 'aaPanel',
             'webmin' => 'Webmin / Virtualmin',
+            'solidcp' => 'SolidCP',
             default => __('None'),
         };
     }

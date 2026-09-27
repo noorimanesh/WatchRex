@@ -70,6 +70,16 @@ jobs:
       - name: ShellCheck agent
         run: shellcheck -S error resources/agent/*.sh
 
+      - name: PowerShell agent parses and is ASCII-only (Windows PowerShell 5.1 safe)
+        shell: pwsh
+        run: |
+          foreach ($f in Get-ChildItem resources/agent/*.ps1) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$errors) | Out-Null
+            if ($errors.Count) { $errors | ForEach-Object { Write-Error "$($f.Name):$($_.Extent.StartLineNumber) $($_.Message)" }; exit 1 }
+            if ([System.IO.File]::ReadAllBytes($f.FullName) | Where-Object { $_ -gt 127 }) { Write-Error "$($f.Name) contains non-ASCII bytes"; exit 1 }
+          }
+
       - name: Blade templates compile
         run: |
           cp .env.example .env
