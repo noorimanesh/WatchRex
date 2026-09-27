@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\SsoController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DependencyController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\MaintenanceController;
@@ -56,6 +57,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/monitors/{monitor}/toggle', [MonitorController::class, 'toggle'])->name('monitors.toggle');
     Route::post('/monitors/{monitor}/check', [MonitorController::class, 'checkNow'])->middleware('throttle:10,1')->name('monitors.check');
     Route::post('/monitors/{monitor}/push-token', [MonitorController::class, 'regenerateToken'])->name('monitors.push-token');
+
+    Route::get('/dependencies', [DependencyController::class, 'index'])->name('dependencies.index');
+    Route::get('/dependencies/live', [DependencyController::class, 'live'])->name('dependencies.live');
 
     Route::resource('servers', ServerController::class);
     Route::post('/servers/{server}/token', [ServerController::class, 'rotateToken'])->name('servers.token');

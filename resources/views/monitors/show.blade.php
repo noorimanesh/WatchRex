@@ -236,11 +236,10 @@
 
         @if ($monitor->parent || $monitor->children->isNotEmpty())
             <div class="card">
-                <div class="card-head"><h2>🔗 {{ __('Dependencies') }}</h2></div>
-                <div class="card-body small">
-                    @if ($monitor->parent)<p>{{ __('Depends on') }}: <a href="{{ route('monitors.show', $monitor->parent) }}"><span class="dot {{ $monitor->parent->status->value }}"></span> {{ $monitor->parent->name }}</a></p>@endif
-                    @foreach ($monitor->children as $child)<div>↳ <a href="{{ route('monitors.show', $child) }}"><span class="dot {{ $child->status->value }}"></span> {{ $child->name }}</a></div>@endforeach
-                    <p class="faint mt-s">{{ __('Alerts for dependants are suppressed while their parent is down.') }}</p>
+                <div class="card-head"><h2>🔗 {{ __('Dependencies') }}</h2><a class="btn sm" href="{{ route('dependencies.index') }}">{{ __('Full map') }}</a></div>
+                <div class="card-body">
+                    <x-dependency-map :map="$depMap" :focus="$monitor->id" />
+                    <p class="small faint mt-s">{{ __('Alerts for dependants are suppressed while their parent is down.') }}</p>
                 </div>
             </div>
         @endif

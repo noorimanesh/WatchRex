@@ -14,6 +14,7 @@ use App\Models\Probe;
 use App\Models\Server;
 use App\Models\User;
 use App\Services\ContentWatcher;
+use App\Services\DependencyMap;
 use App\Services\LocationNames;
 use App\Services\MonitorList;
 use App\Services\MonitorRunner;
@@ -112,6 +113,9 @@ class MonitorController extends Controller
             'beats' => MonitorList::recentBeats([$monitor->id], 60)->get($monitor->id, collect()),
             'incidents' => $monitor->incidents()->latest('started_at')->limit(10)->get(),
             'locations' => $this->locations($monitor),
+            'depMap' => $monitor->parent_id || $monitor->children->isNotEmpty()
+                ? DependencyMap::build(Monitor::visibleTo($request->user())->get(['id', 'name', 'type', 'status', 'is_active', 'parent_id', 'last_response_ms', 'last_message']), $monitor->id)
+                : null,
             'textChanges' => $monitor->snapshots()->where('kind', 'text')->where('change_percent', '>', 0)->latest('id')->limit(5)->get(['id', 'change_percent', 'diff', 'created_at']),
             'visuals' => $monitor->snapshots()->where('kind', 'visual')->latest('id')->limit(2)->get(),
         ]);

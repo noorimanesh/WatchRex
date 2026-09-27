@@ -255,3 +255,23 @@ form.inline { display: inline; }
 .status-hero.major_outage { background: linear-gradient(135deg, #ef4444, #b91c1c); }
 .status-item { padding: 16px 18px; border-bottom: 1px solid var(--border); }
 .status-item:last-child { border-bottom: 0; }
+
+/* Dependency map */
+.depmap { font-family: var(--font); display: block; }
+.depmap .edge { fill: none; stroke: var(--border-2); stroke-width: 2; }
+.depmap .edge.broken { stroke: var(--down); stroke-dasharray: 6 5; animation: dash 1s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -11; } }
+.depmap .node rect { fill: var(--panel); stroke: var(--border-2); stroke-width: 1.5; }
+.depmap .node .bar { fill: var(--pending); stroke: none; }
+.depmap .node.up .bar, .depmap .dot-up { fill: var(--up); }
+.depmap .node.down .bar, .depmap .dot-down { fill: var(--down); }
+.depmap .node.warning .bar, .depmap .dot-warning { fill: var(--warn); }
+.depmap .node.maintenance .bar, .depmap .dot-maintenance { fill: var(--maint); }
+.depmap .dot-pending, .depmap .dot-paused { fill: var(--pending); }
+.depmap .node.down rect:first-child { stroke: var(--down); }
+.depmap .node.impacted rect:first-child { stroke: var(--warn); stroke-dasharray: 4 3; }
+.depmap .node.focus rect:first-child { stroke: var(--brand); stroke-width: 2.5; }
+.depmap .node:hover rect:first-child { stroke: var(--brand); }
+.depmap .name { fill: var(--text); font-size: 13px; font-weight: 700; }
+.depmap .meta { fill: var(--muted); font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .depmap .edge.broken { animation: none; } }
