@@ -20,7 +20,7 @@ class ChannelController extends Controller
     {
         $type = array_key_exists($request->query('type'), NotificationChannel::TYPES) ? $request->query('type') : 'telegram';
 
-        return view('channels.form', ['channel' => new NotificationChannel(['type' => $type, 'is_active' => true, 'is_default' => true, 'config' => []])]);
+        return view('channels.form', ['channel' => new NotificationChannel(['type' => $type, 'is_active' => true, 'is_default' => true, 'config' => []]), 'teams' => $this->assignableTeams()]);
     }
 
     public function store(Request $request)
@@ -37,7 +37,7 @@ class ChannelController extends Controller
     {
         $this->authorizeOwner($channel);
 
-        return view('channels.form', ['channel' => $channel]);
+        return view('channels.form', ['channel' => $channel, 'teams' => $this->assignableTeams()]);
     }
 
     public function update(Request $request, NotificationChannel $channel)
@@ -81,6 +81,7 @@ class ChannelController extends Controller
             'type' => ['required', Rule::in(array_keys(NotificationChannel::TYPES))],
             'is_default' => ['boolean'],
             'is_active' => ['boolean'],
+            'team_id' => $this->teamRule(),
         ];
         foreach ($fields as $key => [$label, $secret]) {
             $optional = str_contains($label, 'optional') || ($secret && $existing);

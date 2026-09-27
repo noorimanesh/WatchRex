@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['name', 'warn_days'])]
+#[Fillable(['team_id', 'name', 'warn_days'])]
 class Domain extends Model
 {
+    use BelongsToTenant;
+
     protected function casts(): array
     {
         return [
@@ -29,16 +30,6 @@ class Domain extends Model
         ];
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function scopeVisibleTo(Builder $query, User $user): Builder
-    {
-        return $user->isAdmin() ? $query : $query->where('user_id', $user->id);
-    }
-
     public function daysUntilExpiry(): ?int
     {
         return $this->expires_at ? (int) floor(now()->diffInDays($this->expires_at, false)) : null;
@@ -54,7 +45,7 @@ class Domain extends Model
     {
         $name = $this->name;
 
-        return Monitor::where('user_id', $this->user_id)->get()->filter(function (Monitor $m) use ($name) {
+        return Monitor::where(fn ($q) => $q->where('user_id', $this->user_id)->when($this->team_id, fn ($q) => $q->orWhere('team_id', $this->team_id)))->get()->filter(function (Monitor $m) use ($name) {
             $host = strtolower((string) $m->host());
 
             return $host === $name || str_ends_with($host, '.'.$name);

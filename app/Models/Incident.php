@@ -37,7 +37,22 @@ class Incident extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        return $user->isAdmin() ? $query : $query->where('user_id', $user->id);
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(fn ($q) => $q->where('incidents.user_id', $user->id)
+            ->orWhereIn('incidents.monitor_id', Monitor::visibleTo($user)->select('monitors.id')));
+    }
+
+    public function viewableBy(User $user): bool
+    {
+        return $user->isAdmin() || (int) $this->user_id === $user->id || (bool) $this->monitor?->viewableBy($user);
+    }
+
+    public function manageableBy(User $user): bool
+    {
+        return $user->canWrite() && ($user->isAdmin() || (int) $this->user_id === $user->id || (bool) $this->monitor?->manageableBy($user));
     }
 
     public function isOpen(): bool

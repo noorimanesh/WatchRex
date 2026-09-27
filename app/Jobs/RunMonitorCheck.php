@@ -29,7 +29,8 @@ class RunMonitorCheck implements ShouldBeUnique, ShouldQueue
     {
         $monitor = Monitor::find($this->monitorId);
 
-        if ($monitor && $monitor->is_active) {
+        // Monitors checked only from remote probes are skipped on the hub.
+        if ($monitor && $monitor->is_active && ($monitor->setting('check_local', true) || ! $monitor->probes()->exists())) {
             $runner->run($monitor);
         }
     }

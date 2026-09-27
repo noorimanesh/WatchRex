@@ -98,6 +98,39 @@
             <div class="card-body"><x-bars :bars="$bars" /><div class="row between small faint mt-s"><span>{{ __('90 days ago') }}</span><span>{{ __('Today') }}</span></div></div>
         </div>
 
+        @if ($visuals->isNotEmpty() || $monitor->setting('visual'))
+            <div class="card">
+                <div class="card-head"><h2>🖼️ {{ __('Visual snapshots') }}</h2>
+                    <form method="POST" action="{{ route('monitors.screenshot', $monitor) }}">@csrf<button class="btn sm">{{ __('Capture now') }}</button></form></div>
+                <div class="card-body">
+                    @if ($err = $monitor->metaValue('visual.error'))<div class="alert error small">{{ $err }}</div>@endif
+                    <div class="grid g-2">
+                        @foreach ($visuals as $v)
+                            <div><a href="{{ route('monitors.snapshot', [$monitor, $v]) }}" target="_blank"><img src="{{ route('monitors.snapshot', [$monitor, $v]) }}" alt="" style="width:100%;border-radius:10px;border:1px solid var(--border)"></a>
+                                <div class="small muted mt-s">{{ Fmt::date($v->created_at) }} @if ($loop->first && $v->change_percent !== null)· <b class="{{ $v->change_percent >= $monitor->setting('change_threshold', 5) ? 'text-warn' : '' }}">{{ __(':p% changed', ['p' => $v->change_percent]) }}</b>@endif</div></div>
+                        @endforeach
+                    </div>
+                    @if ($visuals->isEmpty())<p class="small muted">{{ __('The first screenshot is taken after the next successful check.') }}</p>@endif
+                </div>
+            </div>
+        @endif
+
+        @if ($textChanges->isNotEmpty())
+            <div class="card">
+                <div class="card-head"><h2>🔍 {{ __('Content changes') }}</h2></div>
+                <div class="card-body stack">
+                    @foreach ($textChanges as $c)
+                        <div>
+                            <div class="row between small"><span>{{ Fmt::date($c->created_at) }}</span><b class="{{ $c->change_percent >= $monitor->setting('change_threshold', 5) ? 'text-warn' : '' }}">{{ __(':p% changed', ['p' => $c->change_percent]) }}</b></div>
+                            <pre class="mt-s" style="max-height:160px">@foreach ($c->diff['removed'] ?? [] as $l)- {{ $l }}
+@endforeach @foreach ($c->diff['added'] ?? [] as $l)+ {{ $l }}
+@endforeach</pre>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <div class="card">
             <div class="card-head"><h2>{{ __('Events') }}</h2><span class="small muted">{{ __('Failures, warnings & maintenance') }}</span></div>
             <div class="table-wrap">
@@ -107,7 +140,7 @@
                         <tr>
                             <td class="nowrap"><span class="badge {{ $e->statusEnum()->value }}">{{ $e->statusEnum()->label() }}</span></td>
                             <td>{{ $e->message }}@if (! empty($e->details['status_code'])) <span class="chip">HTTP {{ $e->details['status_code'] }}</span>@endif</td>
-                            <td class="small muted nowrap">{{ Fmt::date($e->created_at) }}</td>
+                            <td class="small muted nowrap">{{ Fmt::date($e->created_at) }}@if ($locations)<div>{{ \App\Services\LocationNames::label($e->location) }}</div>@endif</td>
                         </tr>
                     @empty
                         <tr><td class="muted">✓ {{ __('No failures recorded in the retention window.') }}</td></tr>
@@ -149,6 +182,21 @@
                 </dl>
             </div>
         </div>
+
+        @if ($locations)
+            <div class="card">
+                <div class="card-head"><h2>🌍 {{ __('Locations') }}</h2><span class="small muted">{{ __('quorum') }}: {{ $monitor->setting('quorum', 'majority') }}</span></div>
+                <div class="card-body">
+                    @foreach ($locations as $loc)
+                        <div class="row between" style="padding:5px 0;{{ $loc['stale'] ? 'opacity:.5' : '' }}">
+                            <span>{{ $loc['label'] }}</span>
+                            <span class="row small"><span class="muted ltr">{{ Fmt::ms($loc['ms']) }}</span><span class="badge {{ $loc['status'] }}">{{ \App\Enums\MonitorStatus::from($loc['status'])->label() }}</span></span>
+                        </div>
+                        @if ($loc['status'] !== 'up')<div class="small faint" style="margin-top:-4px">{{ $loc['message'] }}</div>@endif
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         @if ($ssl)
             <div class="card">

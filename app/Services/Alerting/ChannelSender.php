@@ -2,6 +2,7 @@
 
 namespace App\Services\Alerting;
 
+use App\Mail\ViewMail;
 use App\Models\NotificationChannel;
 use App\Services\Checks\TargetGuard;
 use Illuminate\Support\Facades\Http;
@@ -101,9 +102,7 @@ class ChannelSender
             throw new RuntimeException('No recipients');
         }
 
-        Mail::send('emails.alert', ['p' => $p], function ($m) use ($to, $p) {
-            $m->to($to)->subject($p['title']);
-        });
+        Mail::to($to)->send(new ViewMail($p['title'], 'emails.alert', ['p' => $p]));
 
         return null;
     }

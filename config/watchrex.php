@@ -26,6 +26,38 @@ return [
 
     // Name of this probe location (used for multi-location monitoring).
     'location' => env('WATCHREX_LOCATION', 'local'),
+    'location_label' => env('WATCHREX_LOCATION_LABEL', 'Main server'),
+    'location_country' => env('WATCHREX_LOCATION_COUNTRY'),
+
+    // Probe mode: this install only runs checks for a central hub.
+    'probe' => [
+        'hub_url' => env('WATCHREX_HUB_URL'),
+        'token' => env('WATCHREX_PROBE_TOKEN'),
+        'concurrency' => (int) env('WATCHREX_PROBE_CONCURRENCY', 4),
+    ],
+
+    // Visual change detection (headless Chrome/Chromium screenshots, optional).
+    'screenshots' => [
+        'chrome' => env('WATCHREX_CHROME_PATH'),
+        'tenants' => (bool) env('WATCHREX_SCREENSHOTS_FOR_TENANTS', false),
+        'width' => 1366,
+        'height' => 900,
+        'keep' => 5,
+    ],
+
+    // OpenID Connect single sign-on (Keycloak, Azure AD / Entra ID, Google, Authentik, Okta…).
+    'sso' => [
+        'enabled' => (bool) env('OIDC_ENABLED', false),
+        'label' => env('OIDC_LABEL', 'SSO'),
+        'issuer' => env('OIDC_ISSUER'),
+        'client_id' => env('OIDC_CLIENT_ID'),
+        'client_secret' => env('OIDC_CLIENT_SECRET'),
+        'scopes' => env('OIDC_SCOPES', 'openid email profile'),
+        'auto_create' => (bool) env('OIDC_AUTO_CREATE', false),
+        'allowed_domains' => array_filter(array_map('trim', explode(',', (string) env('OIDC_ALLOWED_DOMAINS', '')))),
+        'default_role' => env('OIDC_DEFAULT_ROLE', 'user'),
+        'disable_password_login' => (bool) env('OIDC_DISABLE_PASSWORD_LOGIN', false),
+    ],
 
     'retention' => [
         'heartbeats_days' => (int) env('WATCHREX_HEARTBEAT_DAYS', 30),

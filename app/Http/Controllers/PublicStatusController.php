@@ -10,6 +10,7 @@ use App\Models\StatusPage;
 use App\Services\Format;
 use App\Services\Uptime;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\ViewErrorBag;
 
 /** Public, cache-friendly status pages (also served on custom domains). */
 class PublicStatusController extends Controller
@@ -33,7 +34,10 @@ class PublicStatusController extends Controller
     {
         $data = $this->data($page);
 
-        return response()->view('status.show', $data + ['page' => $page])
+        // Custom-domain requests are served before the session middleware runs.
+        $errors = request()->hasSession() ? request()->session()->get('errors', new ViewErrorBag) : new ViewErrorBag;
+
+        return response()->view('status.show', $data + ['page' => $page, 'errors' => $errors])
             ->header('Cache-Control', 'public, max-age=30');
     }
 

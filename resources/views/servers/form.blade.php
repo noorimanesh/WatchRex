@@ -8,6 +8,7 @@
         <fieldset>
             <legend>{{ __('Server') }}</legend>
             <x-field name="name" :label="__('Name')" :value="$server->name" required placeholder="cpanel-01 / DA-Germany / docker-prod" />
+            <x-team-select :teams="$teams" :value="$server->team_id" />
             <x-field name="report_interval" type="number" :label="__('Expected report interval (s)')" :value="$server->report_interval" min="30" max="3600" required />
         </fieldset>
         <fieldset>

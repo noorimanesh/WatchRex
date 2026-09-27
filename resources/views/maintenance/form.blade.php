@@ -12,6 +12,7 @@
             <x-field name="starts_at" type="datetime-local" :label="__('Starts')" :value="$window->starts_at?->setTimezone($tz)->format('Y-m-d\TH:i')" required />
             <x-field name="ends_at" type="datetime-local" :label="__('Ends')" :value="$window->ends_at?->setTimezone($tz)->format('Y-m-d\TH:i')" required />
         </div>
+        <x-team-select :teams="$teams" :value="$window->team_id" />
         <button class="btn primary">{{ __('Save') }}</button>
     </div>
     <div class="card card-pad" style="max-height:520px;overflow:auto">

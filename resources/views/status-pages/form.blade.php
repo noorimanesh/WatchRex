@@ -9,6 +9,7 @@
             <x-field name="title" :label="__('Title')" :value="$page->title" required placeholder="Acme Status" />
             <x-field name="slug" :label="__('Slug')" :value="$page->slug" required class="ltr" :help="url('/status').'/<slug>'" />
             <x-field name="description" type="textarea" :label="__('Description')" :value="$page->description" rows="2" style="font-family:var(--font)" />
+            <x-team-select :teams="$teams" :value="$page->team_id" />
             <x-field name="custom_domain" :label="__('Custom domain (optional)')" :value="$page->custom_domain" placeholder="status.company.com" class="ltr" :help="__('Point a CNAME/A record to this server and add the domain to your web server/SSL.')" />
         </fieldset>
         <fieldset><legend>{{ __('Branding') }}</legend>
@@ -20,6 +21,7 @@
             <label class="check"><input type="checkbox" name="is_public" value="1" @checked(old('is_public', $page->is_public))> {{ __('Public') }}</label>
             <label class="check"><input type="checkbox" name="show_uptime" value="1" @checked(old('show_uptime', $page->show_uptime))> {{ __('Show uptime percentages') }}</label>
             <label class="check"><input type="checkbox" name="show_response" value="1" @checked(old('show_response', $page->show_response))> {{ __('Show response times') }}</label>
+            <label class="check"><input type="checkbox" name="allow_subscribers" value="1" @checked(old('allow_subscribers', $page->allow_subscribers))> {{ __('Allow visitors to subscribe to incident e-mails') }} @isset($subscriberCount)<span class="chip">{{ trans_choice(':count subscriber|:count subscribers', $subscriberCount) }}</span>@endisset</label>
             <label class="check"><input type="checkbox" name="hide_branding" value="1" @checked(old('hide_branding', $page->hide_branding))> {{ __('White label (hide "Powered by WatchRex")') }}</label>
         </fieldset>
         <button class="btn primary">{{ __('Save') }}</button>

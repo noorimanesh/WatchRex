@@ -19,8 +19,9 @@ class StatusPageController extends Controller
     public function create(Request $request)
     {
         return view('status-pages.form', [
-            'page' => new StatusPage(['is_public' => true, 'show_uptime' => true, 'show_response' => true, 'accent' => '#10b981']),
-            'monitors' => Monitor::where('user_id', $request->user()->id)->orderBy('name')->get(['id', 'name', 'type']),
+            'page' => new StatusPage(['is_public' => true, 'show_uptime' => true, 'show_response' => true, 'allow_subscribers' => true, 'accent' => '#10b981']),
+            'monitors' => Monitor::visibleTo($request->user())->orderBy('name')->get(['id', 'name', 'type']),
+            'teams' => $this->assignableTeams(),
             'selected' => collect(),
         ]);
     }
@@ -39,13 +40,15 @@ class StatusPageController extends Controller
         return redirect()->route('status-pages.index')->with('success', __('Status page created.'));
     }
 
-    public function edit(StatusPage $statusPage)
+    public function edit(Request $request, StatusPage $statusPage)
     {
         $this->authorizeOwner($statusPage);
 
         return view('status-pages.form', [
             'page' => $statusPage,
-            'monitors' => Monitor::where('user_id', $statusPage->user_id)->orderBy('name')->get(['id', 'name', 'type']),
+            'monitors' => Monitor::visibleTo($request->user())->orderBy('name')->get(['id', 'name', 'type']),
+            'teams' => $this->assignableTeams(),
+            'subscriberCount' => $statusPage->subscribers()->whereNotNull('verified_at')->count(),
             'selected' => $statusPage->monitors->keyBy('id'),
         ]);
     }
@@ -77,7 +80,7 @@ class StatusPageController extends Controller
             'slug' => strtolower((string) $request->input('slug')),
             'custom_domain' => $request->filled('custom_domain') ? strtolower(trim((string) $request->input('custom_domain'))) : null,
         ]);
-        foreach (['is_public', 'show_uptime', 'show_response', 'hide_branding'] as $flag) {
+        foreach (['is_public', 'show_uptime', 'show_response', 'hide_branding', 'allow_subscribers'] as $flag) {
             $request->merge([$flag => $request->boolean($flag)]);
         }
 
@@ -93,12 +96,14 @@ class StatusPageController extends Controller
             'show_uptime' => ['boolean'],
             'show_response' => ['boolean'],
             'hide_branding' => ['boolean'],
+            'allow_subscribers' => ['boolean'],
+            'team_id' => $this->teamRule(),
         ]);
     }
 
     private function syncMonitors(Request $request, StatusPage $page): void
     {
-        $allowed = Monitor::where('user_id', $page->user_id)->pluck('id')->flip();
+        $allowed = Monitor::visibleTo($request->user())->pluck('id')->flip();
         $sync = [];
         foreach ((array) $request->input('monitors', []) as $id => $row) {
             if (isset($allowed[(int) $id]) && ! empty($row['enabled'])) {

@@ -21,7 +21,7 @@ class ServerController extends Controller
 
     public function create()
     {
-        return view('servers.form', ['server' => new Server(['report_interval' => 60, 'thresholds' => Server::DEFAULT_THRESHOLDS])]);
+        return view('servers.form', ['server' => new Server(['report_interval' => 60, 'thresholds' => Server::DEFAULT_THRESHOLDS]), 'teams' => $this->assignableTeams()]);
     }
 
     public function store(Request $request)
@@ -43,6 +43,7 @@ class ServerController extends Controller
             'settings' => ['notify_warning' => true, 'anomaly' => false],
         ]);
         $monitor->user_id = $user->id;
+        $monitor->team_id = $server->team_id;
         $monitor->next_check_at = now()->addMinutes(3);
         $monitor->save();
 
@@ -91,14 +92,14 @@ class ServerController extends Controller
     {
         $this->authorizeOwner($server);
 
-        return view('servers.form', ['server' => $server]);
+        return view('servers.form', ['server' => $server, 'teams' => $this->assignableTeams()]);
     }
 
     public function update(Request $request, Server $server)
     {
         $this->authorizeOwner($server);
         $server->update($this->validated($request));
-        $server->monitors()->where('type', MonitorType::Server->value)->update(['name' => $server->name]);
+        $server->monitors()->where('type', MonitorType::Server->value)->update(['name' => $server->name, 'team_id' => $server->team_id]);
         AuditLog::record('server.updated', $server);
 
         return redirect()->route('servers.show', $server)->with('success', __('Server updated.'));
@@ -129,6 +130,7 @@ class ServerController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'report_interval' => ['required', 'integer', 'between:30,3600'],
+            'team_id' => $this->teamRule(),
             'thresholds' => ['array'],
             'thresholds.*' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
         ]);

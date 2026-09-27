@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'thresholds', 'report_interval'])]
+#[Fillable(['team_id', 'name', 'thresholds', 'report_interval'])]
 class Server extends Model
 {
+    use BelongsToTenant;
+
     public const DEFAULT_THRESHOLDS = [
         'cpu' => 90,
         'ram' => 90,
@@ -30,11 +31,6 @@ class Server extends Model
         ];
     }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
     public function metrics(): HasMany
     {
         return $this->hasMany(ServerMetric::class);
@@ -43,11 +39,6 @@ class Server extends Model
     public function monitors(): HasMany
     {
         return $this->hasMany(Monitor::class);
-    }
-
-    public function scopeVisibleTo(Builder $query, User $user): Builder
-    {
-        return $user->isAdmin() ? $query : $query->where('user_id', $user->id);
     }
 
     /** Generate a fresh agent token; returns the plain token (shown once). */

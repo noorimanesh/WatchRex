@@ -89,6 +89,19 @@
                 </div>
             </fieldset>
 
+            <fieldset data-show-for="http keyword">
+                <legend>🔍 {{ __('Change detection (defacement)') }}</legend>
+                <label class="check"><input type="checkbox" name="settings[detect_changes]" value="1" @checked($checked('detect_changes'))> {{ __('Alert when the visible page text changes') }}</label>
+                <div class="grid g-2">
+                    <x-field name="settings[change_threshold]" dot-name="settings.change_threshold" type="number" step="0.1" :label="__('Alert when changed by at least (%)')" :value="$s('change_threshold', 5)" min="0.1" max="100" />
+                    <x-field name="settings[ignore_pattern]" dot-name="settings.ignore_pattern" :label="__('Ignore text matching (regex)')" :value="$s('ignore_pattern')" placeholder="\d{2}:\d{2}|Visitors: \d+" class="ltr" />
+                </div>
+                @if ($screenshots)
+                    <label class="check"><input type="checkbox" name="settings[visual]" value="1" @checked($checked('visual'))> {{ __('Visual comparison with screenshots (headless Chrome)') }}</label>
+                    <x-field name="settings[visual_hours]" dot-name="settings.visual_hours" type="number" :label="__('Screenshot every (hours)')" :value="$s('visual_hours', 6)" min="1" max="168" />
+                @endif
+            </fieldset>
+
             <fieldset data-show-for="api">
                 <legend>{{ __('Synthetic steps (optional)') }}</legend>
                 <x-field name="settings[steps]" dot-name="settings.steps" type="textarea" :value="is_array($s('steps')) ? json_encode($s('steps'), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : $s('steps')" rows="10" class="ltr" :placeholder="$stepsExample" :help="$stepsHelp" />
@@ -152,6 +165,21 @@
                 <label class="check"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $monitor->is_active ?? true))> {{ __('Active') }}</label>
             </fieldset>
 
+            @if ($probes->isNotEmpty())
+            <fieldset data-show-for="{{ $activeTypes }}">
+                <legend>🌍 {{ __('Check locations') }}</legend>
+                <label class="check"><input type="checkbox" name="settings[check_local]" value="1" @checked($checked('check_local', true))> {{ \App\Services\LocationNames::label(config('watchrex.location')) }} <span class="chip">{{ __('this server') }}</span></label>
+                @foreach ($probes as $probe)
+                    <label class="check"><input type="checkbox" name="probes[]" value="{{ $probe->id }}" @checked(in_array($probe->id, old('probes', $selectedProbes)))> {{ $probe->flag() }} {{ $probe->name }} @unless ($probe->isOnline())<span class="badge down">{{ __('Offline') }}</span>@endunless</label>
+                @endforeach
+                <div class="field mt-s"><label>{{ __('Mark as down when it fails from') }}</label>
+                    <select name="settings[quorum]" class="input">
+                        @foreach (['majority' => __('Most locations (recommended)'), 'any' => __('Any location'), 'all' => __('All locations')] as $v => $l)<option value="{{ $v }}" @selected($s('quorum', 'majority') === $v)>{{ $l }}</option>@endforeach
+                    </select>
+                    <span class="help">{{ __('Failures from only some locations are reported as degraded with a network/geo hint.') }}</span></div>
+            </fieldset>
+            @endif
+
             <fieldset data-show-for="{{ $activeTypes }}">
                 <legend>{{ __('Thresholds') }}</legend>
                 <x-field name="settings[response_warn_ms]" dot-name="settings.response_warn_ms" type="number" :label="__('Degraded above (ms)')" :value="$s('response_warn_ms')" min="0" placeholder="2000" />
@@ -173,6 +201,7 @@
 
             <fieldset>
                 <legend>{{ __('Organisation') }}</legend>
+                <x-team-select :teams="$teams" :value="$monitor->team_id" />
                 <x-field name="group" :label="__('Group')" :value="$monitor->group" list="groups" :help="__('e.g. customer name or project')" />
                 <datalist id="groups">@foreach ($groups as $g)<option value="{{ $g }}">@endforeach</datalist>
                 <x-field name="tags" :label="__('Tags')" :value="implode(', ', $monitor->tags ?? [])" placeholder="production, cpanel-01" />

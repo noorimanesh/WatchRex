@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -15,6 +16,9 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
+    /** @var array<int, string>|null per-request cache of team memberships */
+    private ?array $teamRoleCache = null;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -70,6 +74,35 @@ class User extends Authenticatable
     public function apiTokens(): HasMany
     {
         return $this->hasMany(ApiToken::class);
+    }
+
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class)->withPivot('role')->withTimestamps();
+    }
+
+    /** @return list<int> */
+    public function teamIds(): array
+    {
+        return array_keys($this->teamRoles());
+    }
+
+    /** @return list<int> */
+    public function manageableTeamIds(): array
+    {
+        return array_keys(array_filter($this->teamRoles(), fn ($role) => Team::ROLES[$role][1] ?? false));
+    }
+
+    /** @return array<int, string> team id => role */
+    public function teamRoles(): array
+    {
+        return $this->teamRoleCache ??= $this->teams()->get(['teams.id'])
+            ->mapWithKeys(fn ($t) => [(int) $t->id => $t->pivot->role])->all();
+    }
+
+    public function flushTeamCache(): void
+    {
+        $this->teamRoleCache = null;
     }
 
     public function isAdmin(): bool

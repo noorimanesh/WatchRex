@@ -10,6 +10,7 @@
     <div class="row wrap">
         <input class="input ltr" name="name" placeholder="example.com" required style="flex:1;min-width:220px" value="{{ old('name') }}">
         <input class="input" type="number" name="warn_days" value="{{ old('warn_days', 30) }}" min="1" max="120" style="width:120px" title="{{ __('Warn days before expiry') }}">
+        @if ($teams->isNotEmpty())<select name="team_id" class="input" style="width:auto"><option value="">{{ __('Only me') }}</option>@foreach ($teams as $t)<option value="{{ $t->id }}">👥 {{ $t->name }}</option>@endforeach</select>@endif
         <button class="btn primary"><x-icon name="plus"/>{{ __('Add domain') }}</button>
     </div>
     @error('name')<div class="error mt-s">{{ $message }}</div>@enderror

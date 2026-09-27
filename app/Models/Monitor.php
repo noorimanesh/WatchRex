@@ -4,20 +4,22 @@ namespace App\Models;
 
 use App\Enums\MonitorStatus;
 use App\Enums\MonitorType;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable([
+#[Fillable(['team_id',
     'name', 'type', 'target', 'port', 'method', 'interval', 'timeout', 'retries',
     'settings', 'credentials', 'group', 'tags', 'is_active', 'parent_id', 'server_id',
 ])]
 class Monitor extends Model
 {
+    use BelongsToTenant;
+
     protected $attributes = [
         'status' => 'pending',
     ];
@@ -47,11 +49,6 @@ class Monitor extends Model
                 $monitor->push_token = Str::random(40);
             }
         });
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
     }
 
     public function parent(): BelongsTo
@@ -94,14 +91,19 @@ class Monitor extends Model
         return $this->belongsToMany(StatusPage::class);
     }
 
+    public function probes(): BelongsToMany
+    {
+        return $this->belongsToMany(Probe::class);
+    }
+
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(ContentSnapshot::class);
+    }
+
     public function maintenanceWindows(): BelongsToMany
     {
         return $this->belongsToMany(MaintenanceWindow::class);
-    }
-
-    public function scopeVisibleTo(Builder $query, User $user): Builder
-    {
-        return $user->isAdmin() ? $query : $query->where('user_id', $user->id);
     }
 
     public function setting(string $key, mixed $default = null): mixed

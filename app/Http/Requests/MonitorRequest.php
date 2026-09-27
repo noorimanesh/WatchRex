@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\MonitorType;
 use App\Models\Monitor;
+use App\Models\Server;
+use App\Models\Team;
 use App\Services\Domain\DnsLookup;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,11 +19,13 @@ class MonitorRequest extends FormRequest
         'record_type', 'expected', 'alert_on_change', 'security', 'require_tls', 'open_relay_test',
         'rbl_check', 'quota_warn', 'database', 'payload', 'expect_response', 'count', 'grace',
         'steps', 'anomaly', 'notify_warning', 'remind_minutes',
+        'check_local', 'quorum', 'detect_changes', 'change_threshold', 'ignore_pattern', 'visual', 'visual_hours',
     ];
 
     public const BOOLEAN_SETTINGS = [
         'keyword_invert', 'keyword_case', 'verify_ssl', 'follow_redirects', 'alert_on_change',
         'require_tls', 'open_relay_test', 'rbl_check', 'expect_response', 'anomaly', 'notify_warning',
+        'check_local', 'detect_changes', 'visual',
     ];
 
     public function authorize(): bool
@@ -65,8 +69,20 @@ class MonitorRequest extends FormRequest
             'retries' => ['required', 'integer', 'between:0,10'],
             'group' => ['nullable', 'string', 'max:60'],
             'tags' => ['nullable', 'string', 'max:255'],
-            'parent_id' => ['nullable', 'integer', Rule::exists('monitors', 'id')->where(fn ($q) => $this->user()->isAdmin() ? $q : $q->where('user_id', $this->user()->id))],
-            'server_id' => [$type === MonitorType::Server ? 'required' : 'nullable', 'integer', Rule::exists('servers', 'id')->where(fn ($q) => $this->user()->isAdmin() ? $q : $q->where('user_id', $this->user()->id))],
+            'parent_id' => ['nullable', 'integer', Rule::in(Monitor::visibleTo($this->user())->pluck('id')->all())],
+            'server_id' => [$type === MonitorType::Server ? 'required' : 'nullable', 'integer', Rule::in(Server::visibleTo($this->user())->pluck('id')->all())],
+            'team_id' => ['nullable', 'integer', Rule::in($this->user()->isAdmin() ? Team::pluck('id')->all() : $this->user()->manageableTeamIds())],
+            'probes' => ['nullable', 'array'],
+            'probes.*' => ['integer', Rule::exists('probes', 'id')->where('is_active', true)],
+            'settings.check_local' => ['nullable', 'boolean'],
+            'settings.quorum' => ['nullable', Rule::in(['any', 'majority', 'all'])],
+            'settings.change_threshold' => ['nullable', 'numeric', 'between:0.1,100'],
+            'settings.ignore_pattern' => ['nullable', 'string', 'max:300', function ($attr, $value, $fail) {
+                if ($value !== null && $value !== '' && @preg_match('~'.str_replace('~', '\\~', $value).'~u', '') === false) {
+                    $fail(__('Invalid regular expression.'));
+                }
+            }],
+            'settings.visual_hours' => ['nullable', 'integer', 'between:1,168'],
             'is_active' => ['boolean'],
             'settings' => ['array'],
             'settings.expected_status' => ['nullable', 'string', 'max:60', 'regex:/^[0-9,\- ]*$/'],
@@ -99,12 +115,15 @@ class MonitorRequest extends FormRequest
     /** @return array<string, mixed> monitor attributes ready to fill */
     public function monitorData(?Monitor $existing = null): array
     {
-        $data = $this->safe()->only(['name', 'type', 'target', 'port', 'method', 'interval', 'timeout', 'retries', 'group', 'parent_id', 'server_id', 'is_active']);
+        $data = $this->safe()->only(['name', 'type', 'target', 'port', 'method', 'interval', 'timeout', 'retries', 'group', 'parent_id', 'server_id', 'is_active', 'team_id']);
         $data['method'] = $data['method'] ?? 'GET';
         $data['settings'] = array_filter(
             array_intersect_key((array) $this->validated('settings', []), array_flip(self::SETTINGS)),
             fn ($v) => $v !== null && $v !== '',
         );
+        if (! empty($data['settings']['visual']) && ! ($this->user()->isAdmin() || config('watchrex.screenshots.tenants'))) {
+            $data['settings']['visual'] = false;
+        }
         $data['tags'] = array_values(array_unique(array_filter(array_map(fn ($t) => mb_substr(trim($t), 0, 30), explode(',', (string) $this->input('tags', ''))))));
 
         if ($existing && (int) $data['parent_id'] === $existing->id) {
