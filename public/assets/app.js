@@ -83,3 +83,21 @@
   // Auto-submit filter selects
   document.querySelectorAll('[data-autosubmit]').forEach(function (s) { s.addEventListener('change', function () { s.form.submit(); }); });
 })();
+
+/* Billing: monthly / yearly switch */
+(function () {
+  var sw = document.querySelector('[data-period-switch]');
+  if (!sw) return;
+  sw.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-period]');
+    if (!a) return;
+    e.preventDefault();
+    var yearly = a.dataset.period === 'yearly';
+    sw.querySelectorAll('[data-period]').forEach(function (x) { x.classList.toggle('active', x === a); });
+    document.querySelectorAll('[data-price-yearly],[data-label-yearly]').forEach(function (x) { x.classList.toggle('hidden', !yearly); });
+    document.querySelectorAll('[data-price-monthly],[data-label-monthly]').forEach(function (x) { x.classList.toggle('hidden', yearly); });
+    document.querySelectorAll('[data-period-input]').forEach(function (x) { x.value = a.dataset.period; });
+  });
+})();
+
+document.addEventListener('click', function (e) { if (e.target.closest('[data-print]')) window.print(); });

@@ -89,6 +89,7 @@ class UserController extends Controller
             'plan' => ['required', Rule::in(array_keys(config('watchrex.plans')))],
             'max_monitors' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'min_interval' => ['nullable', 'integer', 'min:10', 'max:86400'],
+            'plan_expires_at' => ['nullable', 'date'],
             'is_active' => ['boolean'],
             'locale' => ['required', Rule::in(array_keys(config('watchrex.locales')))],
             'timezone' => ['required', 'timezone:all'],

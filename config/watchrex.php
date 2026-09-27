@@ -114,13 +114,33 @@ return [
     ],
 
     'plans' => [
-        'free' => ['label' => 'Free', 'max_monitors' => 5, 'min_interval' => 300, 'max_servers' => 1, 'max_domains' => 2, 'max_status_pages' => 1],
-        'pro' => ['label' => 'Pro', 'max_monitors' => 50, 'min_interval' => 60, 'max_servers' => 5, 'max_domains' => 20, 'max_status_pages' => 3],
-        'business' => ['label' => 'Business', 'max_monitors' => 500, 'min_interval' => 30, 'max_servers' => 50, 'max_domains' => 200, 'max_status_pages' => 20],
-        'enterprise' => ['label' => 'Enterprise', 'max_monitors' => null, 'min_interval' => 20, 'max_servers' => null, 'max_domains' => null, 'max_status_pages' => null],
+        // Prices are in Toman per month; yearly = 10 × monthly (two months free). null = contact sales.
+        'free' => ['label' => 'Free', 'max_monitors' => 5, 'min_interval' => 300, 'max_servers' => 1, 'max_domains' => 2, 'max_status_pages' => 1, 'price' => 0],
+        'pro' => ['label' => 'Pro', 'max_monitors' => 50, 'min_interval' => 60, 'max_servers' => 5, 'max_domains' => 20, 'max_status_pages' => 3, 'price' => (int) env('WATCHREX_PRICE_PRO', 290000)],
+        'business' => ['label' => 'Business', 'max_monitors' => 500, 'min_interval' => 30, 'max_servers' => 50, 'max_domains' => 200, 'max_status_pages' => 20, 'price' => (int) env('WATCHREX_PRICE_BUSINESS', 1490000)],
+        'enterprise' => ['label' => 'Enterprise', 'max_monitors' => null, 'min_interval' => 20, 'max_servers' => null, 'max_domains' => null, 'max_status_pages' => null, 'price' => null],
     ],
 
     'default_plan' => env('WATCHREX_DEFAULT_PLAN', 'pro'),
+
+    // Self-service plan purchase (SaaS mode).
+    'billing' => [
+        'enabled' => (bool) env('WATCHREX_BILLING', false),
+        'gateway' => env('WATCHREX_PAYMENT_GATEWAY', 'zarinpal'),
+        'vat_percent' => (float) env('WATCHREX_VAT_PERCENT', 10),
+        'yearly_months' => 10,
+        'grace_days' => (int) env('WATCHREX_BILLING_GRACE_DAYS', 3),
+        'seller' => [
+            'name' => env('WATCHREX_SELLER_NAME', 'Fabapars'),
+            'address' => env('WATCHREX_SELLER_ADDRESS'),
+            'national_id' => env('WATCHREX_SELLER_NATIONAL_ID'),
+            'economic_code' => env('WATCHREX_SELLER_ECONOMIC_CODE'),
+        ],
+        'zarinpal' => [
+            'merchant_id' => env('ZARINPAL_MERCHANT_ID'),
+            'sandbox' => (bool) env('ZARINPAL_SANDBOX', false),
+        ],
+    ],
 
     'locales' => ['fa' => 'فارسی', 'en' => 'English'],
 

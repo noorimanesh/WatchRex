@@ -87,4 +87,5 @@ jobs:
           php artisan view:cache
 
       - name: Translations are valid JSON
-        run: php -r 'foreach (glob("lang/*.json") as $f) { json_decode(file_get_contents($f), flags: JSON_THROW_ON_ERROR); }'
+        run: |
+          php -r 'foreach (glob("lang/*.json") as $f) { json_decode(file_get_contents($f), flags: JSON_THROW_ON_ERROR); }'

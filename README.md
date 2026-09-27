@@ -25,6 +25,9 @@ Laravel 13 · PHP 8.3+ · بدون Node/Build · RTL و تقویم شمسی · M
 - [پایش چندموقعیتی (پراب‌ها)](#پایش-چندموقعیتی-پراب‌ها)
 - [تیم‌ها](#تیم‌ها)
 - [ورود یکپارچه (SSO)](#ورود-یکپارچه-sso)
+- [ایجنت ویندوز سرور](#ایجنت-ویندوز-سرور)
+- [نقشه وابستگی](#نقشه-وابستگی)
+- [فروش پلن و پرداخت (زرین‌پال)](#فروش-پلن-و-پرداخت-زرینپال)
 - [تشخیص تغییر محتوا و ظاهر](#تشخیص-تغییر-محتوا-و-ظاهر)
 - [مانیتورهای Push برای کران‌جاب](#مانیتورهای-push-برای-کرانجاب)
 - [REST API](#rest-api)
@@ -262,6 +265,37 @@ WATCHREX_CHROME_PATH=/usr/bin/chromium        # apt install chromium
 WATCHREX_SCREENSHOTS_FOR_TENANTS=false        # پیش‌فرض فقط برای مدیران (مرورگر به منابع داخلی دسترسی دارد)
 ```
 
+## ایجنت ویندوز سرور
+در صفحه سرور، زبانه **Windows Server** را انتخاب کنید و دستور را در PowerShell با دسترسی Administrator اجرا کنید:
+```powershell
+iwr -UseBasicParsing https://watch.example.com/agent/install.ps1 -OutFile $env:TEMP\wrx.ps1; & $env:TEMP\wrx.ps1 -Token wrx_XXXX
+```
+- سازگار با Windows Server 2016/2019/2022/2025 (PowerShell 5.1، بدون ماژول اضافه) و ویندوز با هر زبانی (از کلاس‌های CIM غیرمحلی استفاده می‌کند).
+- CPU، RAM، Page file، دیسک‌ها، شبکه، پردازش‌های پرمصرف، سرویس‌ها (IIS، SQL Server، MySQL، Exchange، hMailServer، Plesk، RDP…)، **سایت‌ها و Application Poolهای IIS**، صف Exchange / IIS SMTP.
+- **ورودهای ناموفق ویندوز** (Event 4625) با IP مهاجم و حساب‌های هدف، و ورودهای RDP موفق.
+- به‌صورت Scheduled Task با حساب SYSTEM هر دقیقه اجرا می‌شود؛ فایل تنظیمات فقط برای SYSTEM و Administrators قابل خواندن است. حذف: `& $env:TEMP\wrx.ps1 -Uninstall`
+
+## نقشه وابستگی
+منوی **نقشه وابستگی** همه وابستگی‌ها را به‌صورت درخت نمایش می‌دهد (مثلاً سرور ← MySQL ← وب‌سایت). وقتی والدی قطع شود، لینک‌ها قرمز و متحرک می‌شوند، سرویس‌های وابسته «تحت تأثیر» علامت می‌خورند و بنر «MySQL قطع است و روی ۴ سرویس اثر گذاشته» نمایش داده می‌شود. وابستگی چرخشی مجاز نیست.
+
+## فروش پلن و پرداخت (زرین‌پال)
+```env
+WATCHREX_BILLING=true
+ZARINPAL_MERCHANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ZARINPAL_SANDBOX=false
+WATCHREX_PRICE_PRO=290000          # تومان در ماه
+WATCHREX_PRICE_BUSINESS=1490000
+WATCHREX_VAT_PERCENT=10
+WATCHREX_SELLER_NAME="فابا پارس"
+WATCHREX_SELLER_NATIONAL_ID=…
+WATCHREX_SELLER_ECONOMIC_CODE=…
+```
+- کاربران از **پلن و صورت‌حساب** پلن را ماهانه یا سالانه (۱۰ ماه هزینه برای ۱۲ ماه) می‌خرند؛ مالیات بر ارزش افزوده اضافه و فاکتور قابل چاپ/PDF صادر می‌شود.
+- مبلغ فقط سمت سرور محاسبه می‌شود، تأیید تراکنش سرور-به-سرور و **یک‌بار مصرف** است (قفل ردیف؛ callback تکراری پلن را دوبار تمدید نمی‌کند).
+- تمدید از تاریخ انقضای فعلی ادامه می‌یابد؛ ارتقا از همان لحظه شروع می‌شود.
+- ۷ روز و ۱ روز قبل از انقضا یادآوری ارسال می‌شود؛ پس از مهلت (`WATCHREX_BILLING_GRACE_DAYS`) حساب به پلن رایگان منتقل و مانیتورهای مازاد متوقف می‌شوند (`php artisan watchrex:plans` — روزانه در زمان‌بند).
+- مدیر کل در **مدیریت → صورت‌حساب‌ها** درآمد، مالیات، سفارش‌ها و پرداخت‌های کارت‌به‌کارت (ثبت دستی با شماره پیگیری) را مدیریت می‌کند.
+
 ## مانیتورهای Push برای کران‌جاب
 ```bash
 # بکاپ شبانه — اگر تا بازه + مهلت خبری نشود، هشدار
@@ -298,8 +332,10 @@ curl -H "Authorization: Bearer wrx_api_…" https://watch.example.com/api/v1/sum
 | `php artisan watchrex:domains [--all]` | بروزرسانی اطلاعات دامنه‌ها |
 | `php artisan watchrex:prune` | پاک‌سازی داده‌های قدیمی |
 | `php artisan watchrex:probe [--once]` | اجرا به‌عنوان پراب راه دور |
+| `php artisan watchrex:plans` | یادآوری تمدید و اعمال انقضای پلن‌ها |
 
 ## نقشه راه
+- درگاه‌های پرداخت بیشتر (IDPay، زیبال، Stripe) — رابط `PaymentGateway` آماده است
 - SAML 2.0 در کنار OIDC
 - اپلیکیشن موبایل / Push notification بومی
 - گزارش SLA ماهانه PDF برای مشتریان
@@ -318,6 +354,10 @@ curl -H "Authorization: Bearer wrx_api_…" https://watch.example.com/api/v1/sum
 - **Status pages** with custom domains, branding, white-label, JSON, RSS and double opt-in e-mail subscriptions; SVG badges; REST API with scoped tokens.
 - **Multi-location probes**: `php artisan watchrex:probe` on any server (no database) pulls jobs from the hub; quorum-based evaluation turns single-location failures into "network/ISP/geo-specific" warnings.
 - **Teams** (owner/admin/developer/viewer) with per-resource sharing, and **OpenID Connect SSO** (PKCE, state/nonce, domain allow-list, optional auto-provisioning).
+- **Windows Server agent** (PowerShell 5.1): system metrics, IIS sites/app pools, SQL/Exchange services and queues, failed/RDP logons from the Security log.
+- **Dependency map**: server-rendered SVG tree with impact analysis and cycle protection.
+- **SaaS billing**: Zarinpal (v4) checkout, VAT, printable invoices, renewals, reminders and automatic downgrade on expiry; manual bank-transfer activation.
+- **CI**: GitHub Actions for tests (PHP 8.3/8.4), Pint, ShellCheck, PowerShell parsing and Blade compilation.
 - **Change detection**: visible-text diffing on every check plus optional headless-Chrome screenshots with pixel comparison.
 - **Security**: TOTP 2FA, rate limiting, encrypted credentials, hashed tokens, SSRF guard, strict CSP, audit log, read-only viewer role.
 - **Lightweight**: no Node/build step, server-rendered SVG charts, daily aggregates for long-range uptime, SQLite-friendly.

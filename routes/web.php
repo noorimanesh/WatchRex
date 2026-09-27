@@ -7,6 +7,7 @@ use App\Http\Controllers\AgentInstallController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\SsoController;
 use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DependencyController;
@@ -36,6 +37,8 @@ Route::get('/agent/watchrex-agent.ps1', [AgentInstallController::class, 'windows
 Route::post('/status/{slug}/subscribe', [SubscriberController::class, 'subscribe'])->middleware('throttle:5,1')->name('status.subscribe');
 Route::get('/status/{slug}/confirm/{token}', [SubscriberController::class, 'confirm'])->name('status.confirm');
 Route::get('/status/{slug}/unsubscribe/{token}', [SubscriberController::class, 'unsubscribe'])->name('status.unsubscribe');
+
+Route::get('/billing/callback/{number}', [BillingController::class, 'callback'])->middleware('throttle:30,1')->name('billing.callback');
 
 // ── Authentication ────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -92,6 +95,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/monitors/{monitor}/snapshots/{snapshot}', [MonitorController::class, 'snapshot'])->name('monitors.snapshot');
     Route::post('/monitors/{monitor}/screenshot', [MonitorController::class, 'screenshot'])->middleware('throttle:3,1')->name('monitors.screenshot');
 
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1')->name('billing.checkout');
+    Route::get('/billing/invoices/{order}', [BillingController::class, 'invoice'])->name('billing.invoice');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
@@ -108,6 +115,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/probes/{probe}', [ProbeController::class, 'update'])->name('probes.update');
         Route::post('/probes/{probe}/token', [ProbeController::class, 'token'])->name('probes.token');
         Route::delete('/probes/{probe}', [ProbeController::class, 'destroy'])->name('probes.destroy');
+        Route::get('/billing', [BillingController::class, 'admin'])->name('billing');
+        Route::post('/billing/orders/{order}/paid', [BillingController::class, 'markPaid'])->name('billing.paid');
         Route::get('/system', [SystemController::class, 'index'])->name('system');
         Route::get('/audit', [SystemController::class, 'audit'])->name('audit');
     });

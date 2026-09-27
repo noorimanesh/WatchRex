@@ -275,3 +275,11 @@ form.inline { display: inline; }
 .depmap .name { fill: var(--text); font-size: 13px; font-weight: 700; }
 .depmap .meta { fill: var(--muted); font-size: 11px; }
 @media (prefers-reduced-motion: reduce) { .depmap .edge.broken { animation: none; } }
+
+/* Plans */
+.plan-card { display: flex; flex-direction: column; gap: 6px; }
+.plan-card.current { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand), var(--shadow); }
+.plan-price b { font-size: 24px; font-weight: 800; }
+.plan-features { list-style: none; padding: 0; margin: 8px 0 14px; flex: 1; }
+.plan-features li { padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.plan-features li::before { content: "✓ "; color: var(--up); }
