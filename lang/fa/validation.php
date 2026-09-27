@@ -1,0 +1,55 @@
+<?php
+
+return [
+    'accepted' => ':attribute باید پذیرفته شود.',
+    'after' => ':attribute باید تاریخی بعد از :date باشد.',
+    'array' => ':attribute باید آرایه باشد.',
+    'between' => [
+        'numeric' => ':attribute باید بین :min و :max باشد.',
+        'string' => ':attribute باید بین :min و :max کاراکتر باشد.',
+        'array' => ':attribute باید بین :min و :max آیتم داشته باشد.',
+    ],
+    'boolean' => ':attribute باید درست یا نادرست باشد.',
+    'confirmed' => 'تکرار :attribute مطابقت ندارد.',
+    'current_password' => 'رمز عبور نادرست است.',
+    'date' => ':attribute یک تاریخ معتبر نیست.',
+    'email' => ':attribute باید یک ایمیل معتبر باشد.',
+    'enum' => ':attribute انتخاب‌شده معتبر نیست.',
+    'exists' => ':attribute انتخاب‌شده معتبر نیست.',
+    'in' => ':attribute انتخاب‌شده معتبر نیست.',
+    'integer' => ':attribute باید عدد صحیح باشد.',
+    'json' => ':attribute باید یک JSON معتبر باشد.',
+    'max' => [
+        'numeric' => ':attribute نباید بیشتر از :max باشد.',
+        'string' => ':attribute نباید بیشتر از :max کاراکتر باشد.',
+        'array' => ':attribute نباید بیشتر از :max آیتم داشته باشد.',
+    ],
+    'min' => [
+        'numeric' => ':attribute باید حداقل :min باشد.',
+        'string' => ':attribute باید حداقل :min کاراکتر باشد.',
+        'array' => ':attribute باید حداقل :min آیتم داشته باشد.',
+    ],
+    'numeric' => ':attribute باید عدد باشد.',
+    'password' => [
+        'letters' => ':attribute باید حداقل یک حرف داشته باشد.',
+        'mixed' => ':attribute باید حداقل یک حرف بزرگ و یک حرف کوچک داشته باشد.',
+        'numbers' => ':attribute باید حداقل یک عدد داشته باشد.',
+        'symbols' => ':attribute باید حداقل یک نماد داشته باشد.',
+        'uncompromised' => ':attribute در نشت‌های اطلاعاتی دیده شده است؛ رمز دیگری انتخاب کنید.',
+    ],
+    'regex' => 'قالب :attribute معتبر نیست.',
+    'required' => 'فیلد :attribute الزامی است.',
+    'required_if' => 'فیلد :attribute الزامی است.',
+    'string' => ':attribute باید متن باشد.',
+    'timezone' => ':attribute باید یک منطقه زمانی معتبر باشد.',
+    'unique' => 'این :attribute قبلاً استفاده شده است.',
+    'url' => ':attribute باید یک آدرس معتبر باشد.',
+
+    'attributes' => [
+        'name' => 'نام', 'email' => 'ایمیل', 'password' => 'رمز عبور', 'current_password' => 'رمز عبور فعلی',
+        'target' => 'مقصد', 'port' => 'پورت', 'interval' => 'بازه بررسی', 'timeout' => 'مهلت', 'retries' => 'تلاش مجدد',
+        'title' => 'عنوان', 'slug' => 'نامک', 'custom_domain' => 'دامنه اختصاصی', 'starts_at' => 'زمان شروع', 'ends_at' => 'زمان پایان',
+        'monitors' => 'مانیتورها', 'code' => 'کد', 'message' => 'پیام', 'timezone' => 'منطقه زمانی', 'report_interval' => 'بازه گزارش',
+        'settings.keyword' => 'کلمه کلیدی', 'settings.steps' => 'مراحل', 'server_id' => 'سرور',
+    ],
+];
