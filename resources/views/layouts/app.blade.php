@@ -27,6 +27,7 @@
         <nav class="nav">
             <a href="{{ route('dashboard') }}" class="{{ $nav('dashboard') }}"><x-icon name="dashboard"/>{{ __('Dashboard') }}</a>
             <a href="{{ route('monitors.index') }}" class="{{ $nav('monitors.*') }}"><x-icon name="activity"/>{{ __('Monitors') }}</a>
+            <a href="{{ route('dependencies.index') }}" class="{{ $nav('dependencies.*') }}"><x-icon name="box"/>{{ __('Dependency map') }}</a>
             <a href="{{ route('servers.index') }}" class="{{ $nav('servers.*') }}"><x-icon name="server"/>{{ __('Servers') }}</a>
             <a href="{{ route('domains.index') }}" class="{{ $nav('domains.*') }}"><x-icon name="globe"/>{{ __('Domains & SSL') }}</a>
             <a href="{{ route('incidents.index') }}" class="{{ $nav('incidents.*') }}"><x-icon name="alert"/>{{ __('Incidents') }}@if ($openIncidents)<span class="count">{{ $openIncidents }}</span>@endif</a>
@@ -35,11 +36,13 @@
             <a href="{{ route('channels.index') }}" class="{{ $nav('channels.*') }}"><x-icon name="bell"/>{{ __('Alert channels') }}</a>
             <a href="{{ route('status-pages.index') }}" class="{{ $nav('status-pages.*') }}"><x-icon name="layout"/>{{ __('Status pages') }}</a>
             <a href="{{ route('maintenance.index') }}" class="{{ $nav('maintenance.*') }}"><x-icon name="wrench"/>{{ __('Maintenance') }}</a>
+            <a href="{{ route('billing.index') }}" class="{{ $nav('billing.*') }}"><x-icon name="zap"/>{{ __('Plan & billing') }}</a>
             <a href="{{ route('teams.index') }}" class="{{ $nav('teams.*') }}"><x-icon name="users"/>{{ __('Teams') }}</a>
 
             @if ($user->isAdmin())
                 <div class="nav-title">{{ __('Administration') }}</div>
                 <a href="{{ route('admin.users.index') }}" class="{{ $nav('admin.users.*') }}"><x-icon name="users"/>{{ __('Users') }}</a>
+                <a href="{{ route('admin.billing') }}" class="{{ $nav('admin.billing') }}"><x-icon name="list"/>{{ __('Billing') }}</a>
                 <a href="{{ route('admin.probes.index') }}" class="{{ $nav('admin.probes.*') }}"><x-icon name="globe"/>{{ __('Probe locations') }}</a>
                 <a href="{{ route('admin.system') }}" class="{{ $nav('admin.system') }}"><x-icon name="settings"/>{{ __('System health') }}</a>
                 <a href="{{ route('admin.audit') }}" class="{{ $nav('admin.audit') }}"><x-icon name="shield"/>{{ __('Audit log') }}</a>

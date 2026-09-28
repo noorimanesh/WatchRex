@@ -18,6 +18,7 @@
     <div class="card card-pad">
         <div class="field"><label>{{ __('Role') }}</label><select name="role" class="input">@foreach (\App\Enums\UserRole::cases() as $r)<option value="{{ $r->value }}" @selected(old('role', $user->role?->value) === $r->value)>{{ $r->label() }}</option>@endforeach</select></div>
         <div class="field"><label>{{ __('Plan') }}</label><select name="plan" class="input">@foreach (config('watchrex.plans') as $k => $p)<option value="{{ $k }}" @selected(old('plan', $user->plan) === $k)>{{ $p['label'] }} — {{ $p['max_monitors'] ?? '∞' }} {{ __('monitors') }}, {{ $p['min_interval'] }}s</option>@endforeach</select></div>
+        <x-field name="plan_expires_at" type="date" :label="__('Plan expires on (empty = never)')" :value="$user->plan_expires_at?->format('Y-m-d')" />
         <div class="grid g-2">
             <x-field name="max_monitors" type="number" :label="__('Max monitors (override)')" :value="$user->max_monitors" min="0" :help="__('Empty = plan default')" />
             <x-field name="min_interval" type="number" :label="__('Min interval s (override)')" :value="$user->min_interval" min="10" />

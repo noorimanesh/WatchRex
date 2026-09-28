@@ -6,6 +6,7 @@ use App\Enums\MonitorType;
 use App\Models\Monitor;
 use App\Models\Server;
 use App\Models\Team;
+use App\Services\DependencyMap;
 use App\Services\Domain\DnsLookup;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -69,7 +70,12 @@ class MonitorRequest extends FormRequest
             'retries' => ['required', 'integer', 'between:0,10'],
             'group' => ['nullable', 'string', 'max:60'],
             'tags' => ['nullable', 'string', 'max:255'],
-            'parent_id' => ['nullable', 'integer', Rule::in(Monitor::visibleTo($this->user())->pluck('id')->all())],
+            'parent_id' => ['nullable', 'integer', Rule::in(Monitor::visibleTo($this->user())->pluck('id')->all()), function ($attr, $value, $fail) {
+                $current = $this->route('monitor');
+                if ($value && $current instanceof Monitor && DependencyMap::createsCycle($current->id, (int) $value)) {
+                    $fail(__('This would create a circular dependency.'));
+                }
+            }],
             'server_id' => [$type === MonitorType::Server ? 'required' : 'nullable', 'integer', Rule::in(Server::visibleTo($this->user())->pluck('id')->all())],
             'team_id' => ['nullable', 'integer', Rule::in($this->user()->isAdmin() ? Team::pluck('id')->all() : $this->user()->manageableTeamIds())],
             'probes' => ['nullable', 'array'],

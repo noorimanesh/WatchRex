@@ -21,7 +21,13 @@ class ServerHealth
 
         foreach ($checks as $key => [$label, $unit]) {
             $limit = $server->threshold($key);
-            $value = $key === 'load' ? $server->stat('load.0') : $server->stat($key === 'login_failed' ? 'mail.login_failed' : ($key === 'mail_queue' ? 'mail.queue' : $key));
+            $value = match ($key) {
+                'load' => $server->stat('load.0'),
+                'mail_queue' => $server->stat('mail.queue'),
+                // Mail logins (Linux) or Windows logon failures, whichever is higher.
+                'login_failed' => max((int) $server->stat('mail.login_failed', 0), (int) $server->stat('security.failed_logons', 0)) ?: null,
+                default => $server->stat($key),
+            };
             if ($limit !== null && $value !== null && (float) $value >= $limit) {
                 $problems[] = "{$label} {$value}{$unit} ≥ {$limit}{$unit}";
             }

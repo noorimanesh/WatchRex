@@ -20,7 +20,7 @@ class ProbeTest extends TestCase
     {
         Queue::fake();
         $user = User::factory()->create();
-        $probe = new Probe(['name' => 'Iran', 'location' => 'ir-tehran', 'country_code' => 'IR']);
+        $probe = new Probe(['name' => 'Iran', 'location' => 'nl-amsterdam', 'country_code' => 'IR']);
         $token = $probe->rotateToken();
         $probe->save();
 
@@ -38,7 +38,7 @@ class ProbeTest extends TestCase
 
         $this->getJson('/api/probe/jobs')->assertUnauthorized();
         $this->withToken($token)->getJson('/api/probe/jobs')->assertOk()
-            ->assertJsonPath('location', 'ir-tehran')
+            ->assertJsonPath('location', 'nl-amsterdam')
             ->assertJsonPath('jobs.0.id', $m->id)
             ->assertJsonPath('jobs.0.credentials.password', 'p')
             ->assertJsonPath('jobs.0.guard', true);
@@ -48,7 +48,7 @@ class ProbeTest extends TestCase
             ['monitor_id' => 999999, 'status' => 'down', 'message' => 'ignored'],
         ]])->assertOk()->assertJsonPath('accepted', 1);
 
-        $this->assertDatabaseHas('heartbeats', ['monitor_id' => $m->id, 'location' => 'ir-tehran', 'status' => 1]);
+        $this->assertDatabaseHas('heartbeats', ['monitor_id' => $m->id, 'location' => 'nl-amsterdam', 'status' => 1]);
         $this->assertNotNull($probe->fresh()->last_seen_at);
     }
 
@@ -58,7 +58,7 @@ class ProbeTest extends TestCase
         $runner = app(MonitorRunner::class);
 
         $runner->process($m, CheckResult::up(120, 'HTTP 200'), config('watchrex.location'));
-        $runner->process($m, CheckResult::down('Connection timed out'), 'ir-tehran');
+        $runner->process($m, CheckResult::down('Connection timed out'), 'nl-amsterdam');
 
         $m->refresh();
         $this->assertSame(MonitorStatus::Warning, $m->status);
