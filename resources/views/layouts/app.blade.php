@@ -42,6 +42,7 @@
 
             @if ($user->isAdmin())
                 <div class="nav-title">{{ __('Administration') }}</div>
+                <a href="{{ route('admin.overview') }}" class="{{ $nav('admin.overview') }}"><x-icon name="dashboard"/>{{ __('Admin overview') }}</a>
                 <a href="{{ route('admin.users.index') }}" class="{{ $nav('admin.users.*') }}"><x-icon name="users"/>{{ __('Users') }}</a>
                 <a href="{{ route('admin.billing') }}" class="{{ $nav('admin.billing') }}"><x-icon name="list"/>{{ __('Billing') }}</a>
                 <a href="{{ route('admin.probes.index') }}" class="{{ $nav('admin.probes.*') }}"><x-icon name="globe"/>{{ __('Probe locations') }}</a>
@@ -68,6 +69,12 @@
         </header>
 
         <main class="content">
+            @if (session('impersonator_id'))
+                <div class="alert warn row between" style="display:flex">
+                    <span>🕵 {{ __('You are signed in as :name (impersonation). Every action is audited.', ['name' => $user->name]) }}</span>
+                    <form method="POST" action="{{ route('impersonate.stop') }}" class="inline">@csrf<button class="btn sm">{{ __('Return to my account') }}</button></form>
+                </div>
+            @endif
             @if (session('success'))<div class="alert success">{{ session('success') }}</div>@endif
             @if (session('error'))<div class="alert error">{{ session('error') }}</div>@endif
             @if (! $user->canWrite())<div class="alert info">{{ __('You have read-only access.') }}</div>@endif

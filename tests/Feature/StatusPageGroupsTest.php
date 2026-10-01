@@ -114,6 +114,6 @@ class StatusPageGroupsTest extends TestCase
         $g = $this->group('fabapars.com', 'website', null, 'fabapars.com');
 
         $this->actingAs($this->user)->get('/status-pages/create?group='.$g->id)->assertOk()
-            ->assertSee('status.fabapars.com')->assertSee('name="groups['.$g->id.'][enabled]" value="1" checked', false);
+            ->assertSee('status.fabapars.com')->assertSee('value="fabapars-com"', false)->assertSee('name="groups['.$g->id.'][enabled]" value="1" checked', false);
     }
 }

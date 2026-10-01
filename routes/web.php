@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\ProbeController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\UserController;
@@ -107,15 +109,20 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
-    Route::post('/profile/two-factor', [ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
-    Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm');
-    Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
-    Route::post('/profile/tokens', [ProfileController::class, 'createToken'])->name('profile.tokens.store');
-    Route::delete('/profile/tokens/{token}', [ProfileController::class, 'deleteToken'])->name('profile.tokens.destroy');
+    Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password')->middleware('not-impersonating');
+    Route::post('/profile/two-factor', [ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable')->middleware('not-impersonating');
+    Route::post('/profile/two-factor/confirm', [ProfileController::class, 'confirmTwoFactor'])->name('profile.2fa.confirm')->middleware('not-impersonating');
+    Route::delete('/profile/two-factor', [ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable')->middleware('not-impersonating');
+    Route::post('/profile/tokens', [ProfileController::class, 'createToken'])->name('profile.tokens.store')->middleware('not-impersonating');
+    Route::delete('/profile/tokens/{token}', [ProfileController::class, 'deleteToken'])->name('profile.tokens.destroy')->middleware('not-impersonating');
+
+    Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
 
     Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+        Route::get('/', [OverviewController::class, 'index'])->name('overview');
         Route::resource('users', UserController::class)->except('show');
+        Route::post('/users/{user}/toggle', [UserController::class, 'toggle'])->name('users.toggle');
+        Route::post('/users/{user}/impersonate', [ImpersonationController::class, 'start'])->middleware('not-impersonating')->name('users.impersonate');
         Route::get('/probes', [ProbeController::class, 'index'])->name('probes.index');
         Route::post('/probes', [ProbeController::class, 'store'])->name('probes.store');
         Route::put('/probes/{probe}', [ProbeController::class, 'update'])->name('probes.update');

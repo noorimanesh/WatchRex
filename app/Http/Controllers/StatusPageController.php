@@ -26,7 +26,7 @@ class StatusPageController extends Controller
         // Prefill from a group: "status page for this website / mail service".
         if ($group = MonitorGroup::visibleTo($request->user())->find((int) $request->query('group'))) {
             $page->title = $group->name;
-            $page->slug = Str::slug($group->domain ?: $group->name) ?: null;
+            $page->slug = Str::slug(str_replace('.', '-', $group->domain ?: $group->name)) ?: null;
             $page->custom_domain = $group->domain && ! StatusPage::where('custom_domain', 'status.'.$group->domain)->exists() ? 'status.'.$group->domain : null;
             $selectedGroups = collect([$group->id => (object) ['pivot' => (object) ['sort' => 0, 'display_name' => null, 'expanded' => true]]]);
         }

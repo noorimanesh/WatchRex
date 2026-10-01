@@ -15,13 +15,37 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $users = User::query()
-            ->withCount(['monitors', 'servers', 'domains'])
+            ->withCount(['monitors', 'servers', 'domains', 'statusPages', 'monitors as down_count' => fn ($q) => $q->where('is_active', true)->where('status', 'down')])
             ->when($request->query('q'), fn ($q, $t) => $q->where(fn ($q) => $q->where('name', 'like', "%{$t}%")->orWhere('email', 'like', "%{$t}%")))
-            ->orderBy('name')
+            ->when(UserRole::tryFrom((string) $request->query('role')), fn ($q, $role) => $q->where('role', $role->value))
+            ->when(array_key_exists((string) $request->query('plan'), config('watchrex.plans')), fn ($q) => $q->where('plan', $request->query('plan')))
+            ->when($request->query('state'), fn ($q, $state) => match ($state) {
+                'active' => $q->where('is_active', true),
+                'inactive' => $q->where('is_active', false),
+                'expiring' => $q->whereNotNull('plan_expires_at')->where('plan_expires_at', '<=', now()->addDays(7)),
+                'no2fa' => $q->whereNull('two_factor_confirmed_at'),
+                default => $q,
+            })
+            ->tap(fn ($q) => match ($request->query('sort')) {
+                'newest' => $q->latest(),
+                'login' => $q->orderByDesc('last_login_at'),
+                'monitors' => $q->orderByDesc('monitors_count'),
+                default => $q->orderBy('name'),
+            })
             ->paginate(30)
             ->withQueryString();
 
-        return view('admin.users.index', ['users' => $users]);
+        return view('admin.users.index', ['users' => $users, 'roles' => UserRole::cases()]);
+    }
+
+    /** Enable / disable an account without opening the edit form. */
+    public function toggle(Request $request, User $user)
+    {
+        abort_if($user->is($request->user()), 422, __('You cannot disable yourself.'));
+        $user->forceFill(['is_active' => ! $user->is_active])->save();
+        AuditLog::record($user->is_active ? 'admin.user_enabled' : 'admin.user_disabled', $user, ['email' => $user->email]);
+
+        return back()->with('success', $user->is_active ? __('Account enabled.') : __('Account disabled.'));
     }
 
     public function create()

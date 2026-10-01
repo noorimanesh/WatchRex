@@ -3,6 +3,7 @@
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureCanWrite;
+use App\Http\Middleware\EnsureNotImpersonating;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\ResolveCustomDomain;
 use App\Http\Middleware\SecurityHeaders;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'api.token' => AuthenticateApiToken::class,
+            'not-impersonating' => EnsureNotImpersonating::class,
         ]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));
