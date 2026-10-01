@@ -340,3 +340,10 @@ details:not([open]) > .sp-sum::after { transform: rotate(90deg); }
 .sp-mbars { flex-basis: 100%; } .sp-mbars .bars { height: 16px; }
 .sp-st { font-weight: 600; } .sp-st.up { color: var(--up); } .sp-st.down { color: var(--down); } .sp-st.warning { color: var(--warn); } .sp-st.maintenance { color: var(--maint); } .sp-st.paused, .sp-st.pending { color: var(--faint); }
 .sp-section.sp-hidden { display: none; }
+
+/* Dashboard */
+a.card.stat { display: block; color: inherit; transition: border-color .15s; } a.card.stat:hover { border-color: var(--border-2); }
+.stat .value small { font-size: 15px; font-weight: 600; }
+.stat .label svg { width: 14px; height: 14px; }
+.dash-issue { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); min-width: 0; }
+.dash-issue:last-child { border-bottom: 0; }
