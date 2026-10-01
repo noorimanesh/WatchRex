@@ -20,6 +20,7 @@ class StatusPage extends Model
             'show_uptime' => 'boolean',
             'show_response' => 'boolean',
             'hide_branding' => 'boolean',
+            'settings' => 'array',
         ];
     }
 
@@ -27,6 +28,31 @@ class StatusPage extends Model
     {
         return $this->belongsToMany(Monitor::class)->withPivot(['sort', 'display_name'])->orderByPivot('sort');
     }
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(MonitorGroup::class, 'monitor_group_status_page')->withPivot(['sort', 'display_name', 'expanded'])->orderByPivot('sort');
+    }
+
+    /** Page option with default (layout, theme, history_days, show_details, show_filters…). */
+    public function option(string $key, mixed $default = null): mixed
+    {
+        return data_get($this->settings ?? [], $key, $default ?? (self::DEFAULTS[$key] ?? null));
+    }
+
+    public const DEFAULTS = [
+        'layout' => 'list',          // list | cards
+        'theme' => 'auto',           // auto | light | dark
+        'history_days' => 90,        // 30 | 60 | 90
+        'incident_days' => 14,
+        'show_details' => true,      // SSL / domain expiry per website group
+        'show_mail_health' => true,  // full mail component checks for mail groups
+        'show_filters' => true,      // group / status filter chips
+        'show_chart' => true,        // response sparkline per group
+        'announcement' => null,
+        'announcement_level' => 'info',
+        'support_url' => null,
+    ];
 
     public function subscribers(): HasMany
     {

@@ -26,6 +26,7 @@ class Server extends Model
     {
         return [
             'thresholds' => 'array',
+            'settings' => 'array',
             'latest' => 'array',
             'last_seen_at' => 'datetime',
         ];
@@ -34,6 +35,11 @@ class Server extends Model
     public function metrics(): HasMany
     {
         return $this->hasMany(ServerMetric::class);
+    }
+
+    public function sites(): HasMany
+    {
+        return $this->hasMany(ServerSite::class);
     }
 
     public function monitors(): HasMany

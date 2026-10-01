@@ -27,7 +27,7 @@
     @if ($facets['groups']->isNotEmpty())
         <select class="input" name="group" data-autosubmit>
             <option value="">{{ __('Any group') }}</option>
-            @foreach ($facets['groups'] as $g)<option @selected(request('group') === $g)>{{ $g }}</option>@endforeach
+            @foreach ($facets['groups'] as $g)<option value="{{ $g->id }}" @selected((int) request('group') === $g->id)>{{ $g->icon() }} {{ $g->name }}</option>@endforeach
         </select>
     @endif
     @if ($facets['tags']->isNotEmpty())
@@ -59,7 +59,7 @@
                     <td style="max-width:340px">
                         <a href="{{ route('monitors.show', $m) }}"><b>{{ $m->name }}</b></a>
                         <div class="small muted truncate ltr" style="text-align:start">{{ $m->displayTarget() }}</div>
-                        <div class="row wrap mt-s" style="gap:4px"><span class="chip">{{ $m->type->label() }}</span>@if ($m->group)<span class="chip">📁 {{ $m->group }}</span>@endif @foreach ($m->tags ?? [] as $t)<span class="chip">#{{ $t }}</span>@endforeach</div>
+                        <div class="row wrap mt-s" style="gap:4px"><span class="chip">{{ $m->type->label() }}</span>@foreach ($m->groups as $g)<a class="chip" href="{{ route('groups.show', $g) }}">{{ $g->icon() }} {{ $g->name }}</a>@endforeach @foreach ($m->tags ?? [] as $t)<span class="chip">#{{ $t }}</span>@endforeach</div>
                     </td>
                     <td><x-status :status="$m->status" :active="$m->is_active" /></td>
                     <td style="min-width:160px"><x-beats :beats="$m->beats" /></td>

@@ -9,6 +9,7 @@ use App\Jobs\CaptureScreenshot;
 use App\Models\AuditLog;
 use App\Models\ContentSnapshot;
 use App\Models\Monitor;
+use App\Models\MonitorGroup;
 use App\Models\NotificationChannel;
 use App\Models\Probe;
 use App\Models\Server;
@@ -79,7 +80,7 @@ class MonitorController extends Controller
     public function show(Request $request, Monitor $monitor)
     {
         $this->authorizeOwner($monitor);
-        $monitor->load(['parent', 'children', 'server', 'channels', 'statusPages']);
+        $monitor->load(['parent', 'children', 'server', 'channels', 'statusPages', 'groups']);
 
         $range = array_key_exists($request->query('range'), self::RANGES) ? $request->query('range') : '24h';
         $to = time();
@@ -231,7 +232,8 @@ class MonitorController extends Controller
             'channels' => NotificationChannel::visibleTo($user)->orderBy('name')->get(),
             'servers' => Server::visibleTo($user)->orderBy('name')->get(['id', 'name']),
             'parents' => Monitor::visibleTo($user)->when($monitor->exists, fn ($q) => $q->whereKeyNot($monitor->id))->orderBy('name')->get(['id', 'name']),
-            'groups' => MonitorList::facets($user)['groups'],
+            'groups' => MonitorGroup::visibleTo($user)->orderBy('name')->get(['id', 'name', 'kind', 'parent_id']),
+            'selectedGroups' => $monitor->exists ? $monitor->groups()->pluck('monitor_groups.id')->all() : array_filter([(int) $request->query('group_id')]),
             'minInterval' => $user->limit('min_interval') ?? 20,
             'teams' => $this->assignableTeams(),
             'probes' => Probe::where('is_active', true)->orderBy('name')->get(),
@@ -247,6 +249,17 @@ class MonitorController extends Controller
             ->pluck('id');
 
         $monitor->channels()->sync($ids);
+
+        $groupIds = MonitorGroup::visibleTo($request->user())->whereIn('id', (array) $request->input('groups', []))->pluck('id')->all();
+        if ($name = trim((string) $request->input('new_group'))) {
+            $group = MonitorGroup::findOrCreateFor(
+                $monitor->user_id,
+                ['name' => $name],
+                ['kind' => preg_match('/^([a-z0-9-]+\.)+[a-z]{2,}$/i', $name) ? 'website' : 'general', 'team_id' => $monitor->team_id],
+            );
+            $groupIds[] = $group->id;
+        }
+        $monitor->groups()->sync(array_unique($groupIds));
 
         if (! $monitor->type->isPassive()) {
             $monitor->probes()->sync(Probe::where('is_active', true)->whereIn('id', (array) $request->input('probes', []))->pluck('id'));

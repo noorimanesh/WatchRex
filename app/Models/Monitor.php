@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 #[Fillable(['team_id',
     'name', 'type', 'target', 'port', 'method', 'interval', 'timeout', 'retries',
-    'settings', 'credentials', 'group', 'tags', 'is_active', 'parent_id', 'server_id',
+    'settings', 'credentials', 'tags', 'is_active', 'parent_id', 'server_id',
 ])]
 class Monitor extends Model
 {
@@ -89,6 +89,11 @@ class Monitor extends Model
     public function statusPages(): BelongsToMany
     {
         return $this->belongsToMany(StatusPage::class);
+    }
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(MonitorGroup::class, 'group_monitor');
     }
 
     public function probes(): BelongsToMany

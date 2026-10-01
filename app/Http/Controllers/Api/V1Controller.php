@@ -80,7 +80,7 @@ class V1Controller extends Controller
             'id' => $m->id, 'uuid' => $m->uuid, 'name' => $m->name, 'type' => $m->type->value,
             'target' => $m->displayTarget(), 'status' => $m->status->value, 'active' => $m->is_active,
             'interval' => $m->interval, 'response_ms' => $m->last_response_ms, 'message' => $m->last_message,
-            'group' => $m->group, 'tags' => $m->tags ?? [], 'last_checked_at' => $m->last_checked_at,
+            'groups' => $m->relationLoaded('groups') ? $m->groups->pluck('name') : $m->groups()->pluck('name'), 'tags' => $m->tags ?? [], 'last_checked_at' => $m->last_checked_at,
             'ssl_days_left' => $m->metaValue('ssl.days_left'),
         ];
     }

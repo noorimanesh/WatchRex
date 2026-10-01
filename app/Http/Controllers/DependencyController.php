@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Monitor;
+use App\Models\MonitorGroup;
 use App\Services\DependencyMap;
 use Illuminate\Http\Request;
 
@@ -22,8 +23,11 @@ class DependencyController extends Controller
     private function map(Request $request): array
     {
         $monitors = Monitor::visibleTo($request->user())
-            ->when($request->query('group'), fn ($q, $g) => $q->where('group', $g))
-            ->get(['id', 'name', 'type', 'status', 'is_active', 'parent_id', 'last_response_ms', 'last_message', 'group']);
+            ->when($request->query('group'), function ($q, $g) use ($request) {
+                $group = MonitorGroup::visibleTo($request->user())->find((int) $g);
+                $q->whereIn('id', $group ? $group->allMonitorIds() : [0]);
+            })
+            ->get(['id', 'name', 'type', 'status', 'is_active', 'parent_id', 'last_response_ms', 'last_message']);
 
         return DependencyMap::build($monitors);
     }

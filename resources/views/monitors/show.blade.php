@@ -14,7 +14,7 @@
             @if ($monitor->type->usesUrl())<a href="{{ $monitor->target }}" target="_blank" rel="noopener noreferrer">{{ $monitor->displayTarget() }} ↗</a>@else{{ $monitor->displayTarget() }}@endif
         </div>
         <div class="small muted mt-s">{{ __('Every :s s', ['s' => $monitor->interval]) }} · {{ __('Last check') }}: {{ $monitor->last_checked_at?->diffForHumans() ?? __('never') }}
-            @if ($monitor->group) · 📁 {{ $monitor->group }}@endif
+            @foreach ($monitor->groups as $g) · <a href="{{ route('groups.show', $g) }}">{{ $g->icon() }} {{ $g->name }}</a>@endforeach
             @foreach ($monitor->tags ?? [] as $tag) <span class="chip">#{{ $tag }}</span>@endforeach
         </div>
     </div>

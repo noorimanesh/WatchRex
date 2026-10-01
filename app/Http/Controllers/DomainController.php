@@ -7,6 +7,7 @@ use App\Jobs\RefreshDomain;
 use App\Models\AuditLog;
 use App\Models\Domain;
 use App\Models\Monitor;
+use App\Models\MonitorGroup;
 use App\Services\Uptime;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -100,13 +101,19 @@ class DomainController extends Controller
         $monitor = new Monitor([
             'name' => $host, 'type' => MonitorType::Http, 'target' => 'https://'.$host,
             'interval' => max(60, $user->limit('min_interval') ?? 60), 'timeout' => 10, 'retries' => 1, 'is_active' => true,
-            'group' => $domain->name,
             'settings' => ['verify_ssl' => true, 'follow_redirects' => true, 'anomaly' => true, 'notify_warning' => true, 'expected_status' => '200-399'],
         ]);
         $monitor->user_id = $user->id;
         $monitor->team_id = $domain->team_id;
         $monitor->next_check_at = now();
         $monitor->save();
+
+        $group = MonitorGroup::findOrCreateFor(
+            $domain->user_id,
+            ['kind' => 'website', 'domain' => $domain->name],
+            ['name' => $domain->name, 'team_id' => $domain->team_id],
+        );
+        $monitor->groups()->syncWithoutDetaching([$group->id]);
 
         return back()->with('success', __('Monitor created for :h', ['h' => $host]));
     }

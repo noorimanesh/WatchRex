@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\MonitorType;
 use App\Models\Heartbeat;
 use App\Models\Monitor;
+use App\Models\MonitorGroup;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,16 +20,18 @@ class MonitorList
         $f = $request->only(self::FILTERS);
 
         return Monitor::visibleTo($user)
-            ->with(['user:id,name', 'server:id,name'])
+            ->with(['user:id,name', 'server:id,name', 'groups:id,name,kind'])
             ->when($f['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('name', 'like', "%{$term}%")->orWhere('target', 'like', "%{$term}%")))
             ->when($f['status'] ?? null, fn ($q, $s) => $s === 'paused' ? $q->where('is_active', false) : $q->where('is_active', true)->where('status', $s))
             ->when($f['type'] ?? null, fn ($q, $t) => $q->where('type', $t))
             ->when($f['category'] ?? null, fn ($q, $c) => $q->whereIn('type', collect(MonitorType::cases())->filter(fn ($t) => $t->category() === $c)->map->value->all()))
-            ->when($f['group'] ?? null, fn ($q, $g) => $q->where('group', $g))
+            ->when($f['group'] ?? null, function ($q, $g) use ($user) {
+                $group = MonitorGroup::visibleTo($user)->find((int) $g);
+                $q->whereIn('monitors.id', $group ? $group->allMonitorIds() : [0]);
+            })
             ->when($f['tag'] ?? null, fn ($q, $t) => $q->where('tags', 'like', '%"'.str_replace(['%', '_', '"'], '', $t).'"%'))
             ->when($user->isAdmin() && ($f['owner'] ?? null), fn ($q) => $q->where('user_id', (int) $f['owner']))
             ->orderByRaw("CASE status WHEN 'down' THEN 0 WHEN 'warning' THEN 1 WHEN 'pending' THEN 2 ELSE 3 END")
-            ->orderBy('group')
             ->orderBy('name');
     }
 
@@ -67,10 +70,10 @@ class MonitorList
     /** Distinct groups and tags for filter dropdowns. */
     public static function facets(User $user): array
     {
-        $rows = Monitor::visibleTo($user)->get(['group', 'tags']);
+        $rows = Monitor::visibleTo($user)->get(['tags']);
 
         return [
-            'groups' => $rows->pluck('group')->filter()->unique()->sort()->values(),
+            'groups' => MonitorGroup::visibleTo($user)->orderBy('name')->get(['id', 'name', 'kind']),
             'tags' => $rows->pluck('tags')->flatten()->filter()->unique()->sort()->values(),
         ];
     }

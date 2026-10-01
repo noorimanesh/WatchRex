@@ -12,6 +12,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DependencyController;
 use App\Http\Controllers\DomainController;
+use App\Http\Controllers\GroupController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\MonitorController;
@@ -60,6 +61,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/monitors/{monitor}/toggle', [MonitorController::class, 'toggle'])->name('monitors.toggle');
     Route::post('/monitors/{monitor}/check', [MonitorController::class, 'checkNow'])->middleware('throttle:10,1')->name('monitors.check');
     Route::post('/monitors/{monitor}/push-token', [MonitorController::class, 'regenerateToken'])->name('monitors.push-token');
+
+    Route::resource('groups', GroupController::class);
+    Route::post('/groups/{group}/members', [GroupController::class, 'members'])->name('groups.members');
 
     Route::get('/dependencies', [DependencyController::class, 'index'])->name('dependencies.index');
     Route::get('/dependencies/live', [DependencyController::class, 'live'])->name('dependencies.live');

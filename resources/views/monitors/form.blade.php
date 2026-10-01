@@ -202,8 +202,13 @@
             <fieldset>
                 <legend>{{ __('Organisation') }}</legend>
                 <x-team-select :teams="$teams" :value="$monitor->team_id" />
-                <x-field name="group" :label="__('Group')" :value="$monitor->group" list="groups" :help="__('e.g. customer name or project')" />
-                <datalist id="groups">@foreach ($groups as $g)<option value="{{ $g }}">@endforeach</datalist>
+                <div class="field"><label>{{ __('Groups') }}</label>
+                    <div style="max-height:180px;overflow:auto;border:1px solid var(--border-2);border-radius:10px;padding:8px 10px">
+                        @forelse ($groups as $g)<label class="check" style="margin-bottom:4px"><input type="checkbox" name="groups[]" value="{{ $g->id }}" @checked(in_array($g->id, old('groups', $selectedGroups)))> {{ $g->icon() }} {{ $g->name }}</label>
+                        @empty<span class="small muted">{{ __('No groups yet.') }}</span>@endforelse
+                    </div>
+                </div>
+                <x-field name="new_group" :label="__('…or create a new group')" placeholder="example.com" :help="__('A domain name creates a website group.')" />
                 <x-field name="tags" :label="__('Tags')" :value="implode(', ', $monitor->tags ?? [])" placeholder="production, cpanel-01" />
                 <div class="field"><label>{{ __('Depends on') }}</label>
                     <select name="parent_id" class="input"><option value="">—</option>@foreach ($parents as $p)<option value="{{ $p->id }}" @selected(old('parent_id', $monitor->parent_id) == $p->id)>{{ $p->name }}</option>@endforeach</select>

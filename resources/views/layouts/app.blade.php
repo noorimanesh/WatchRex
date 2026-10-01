@@ -27,6 +27,7 @@
         <nav class="nav">
             <a href="{{ route('dashboard') }}" class="{{ $nav('dashboard') }}"><x-icon name="dashboard"/>{{ __('Dashboard') }}</a>
             <a href="{{ route('monitors.index') }}" class="{{ $nav('monitors.*') }}"><x-icon name="activity"/>{{ __('Monitors') }}</a>
+            <a href="{{ route('groups.index') }}" class="{{ $nav('groups.*') }}"><x-icon name="list"/>{{ __('Groups') }}</a>
             <a href="{{ route('dependencies.index') }}" class="{{ $nav('dependencies.*') }}"><x-icon name="box"/>{{ __('Dependency map') }}</a>
             <a href="{{ route('servers.index') }}" class="{{ $nav('servers.*') }}"><x-icon name="server"/>{{ __('Servers') }}</a>
             <a href="{{ route('domains.index') }}" class="{{ $nav('domains.*') }}"><x-icon name="globe"/>{{ __('Domains & SSL') }}</a>

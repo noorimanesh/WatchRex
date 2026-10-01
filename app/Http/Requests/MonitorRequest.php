@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\MonitorType;
 use App\Models\Monitor;
+use App\Models\MonitorGroup;
 use App\Models\Server;
 use App\Models\Team;
 use App\Services\DependencyMap;
@@ -68,7 +69,9 @@ class MonitorRequest extends FormRequest
             'interval' => ['required', 'integer', "min:{$minInterval}", 'max:86400'],
             'timeout' => ['required', 'integer', 'between:1,60'],
             'retries' => ['required', 'integer', 'between:0,10'],
-            'group' => ['nullable', 'string', 'max:60'],
+            'groups' => ['nullable', 'array'],
+            'groups.*' => ['integer', Rule::in(MonitorGroup::visibleTo($this->user())->pluck('id')->all())],
+            'new_group' => ['nullable', 'string', 'max:120'],
             'tags' => ['nullable', 'string', 'max:255'],
             'parent_id' => ['nullable', 'integer', Rule::in(Monitor::visibleTo($this->user())->pluck('id')->all()), function ($attr, $value, $fail) {
                 $current = $this->route('monitor');
@@ -121,7 +124,7 @@ class MonitorRequest extends FormRequest
     /** @return array<string, mixed> monitor attributes ready to fill */
     public function monitorData(?Monitor $existing = null): array
     {
-        $data = $this->safe()->only(['name', 'type', 'target', 'port', 'method', 'interval', 'timeout', 'retries', 'group', 'parent_id', 'server_id', 'is_active', 'team_id']);
+        $data = $this->safe()->only(['name', 'type', 'target', 'port', 'method', 'interval', 'timeout', 'retries', 'parent_id', 'server_id', 'is_active', 'team_id']);
         $data['method'] = $data['method'] ?? 'GET';
         $data['settings'] = array_filter(
             array_intersect_key((array) $this->validated('settings', []), array_flip(self::SETTINGS)),

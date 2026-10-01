@@ -101,3 +101,13 @@
 })();
 
 document.addEventListener('click', function (e) { if (e.target.closest('[data-print]')) window.print(); });
+
+/* Client-side list filter: <input data-filter-list="#id"> + [data-filter-item="text"] */
+document.addEventListener('input', function (e) {
+  var sel = e.target.getAttribute && e.target.getAttribute('data-filter-list');
+  if (!sel) return;
+  var q = e.target.value.toLowerCase();
+  document.querySelectorAll(sel + ' [data-filter-item]').forEach(function (el) {
+    el.style.display = el.getAttribute('data-filter-item').indexOf(q) === -1 ? 'none' : '';
+  });
+});
