@@ -70,6 +70,8 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('servers', ServerController::class);
     Route::post('/servers/{server}/token', [ServerController::class, 'rotateToken'])->name('servers.token');
+    Route::post('/servers/{server}/sites', [ServerController::class, 'sitesAction'])->middleware('throttle:20,1')->name('servers.sites');
+    Route::put('/servers/{server}/sites/settings', [ServerController::class, 'siteSettings'])->name('servers.sites.settings');
 
     Route::resource('domains', DomainController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
     Route::post('/domains/{domain}/refresh', [DomainController::class, 'refresh'])->middleware('throttle:6,1')->name('domains.refresh');

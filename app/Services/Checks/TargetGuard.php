@@ -24,10 +24,10 @@ class TargetGuard
             $ips = [$host];
         } else {
             $ips = [];
-            foreach ((array) @dns_get_record($host, DNS_A) as $r) {
+            foreach (@dns_get_record($host, DNS_A) ?: [] as $r) {
                 $ips[] = $r['ip'];
             }
-            foreach ((array) @dns_get_record($host, DNS_AAAA) as $r) {
+            foreach (@dns_get_record($host, DNS_AAAA) ?: [] as $r) {
                 $ips[] = $r['ipv6'];
             }
             if (! $ips) {

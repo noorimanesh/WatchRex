@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Alerting\ChannelSender;
 use App\Services\Checks\CheckerFactory;
 use App\Services\Checks\CheckFailed;
+use App\Services\Checks\TargetGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -109,5 +110,12 @@ class TenancyTest extends TestCase
         $result = CheckerFactory::for($m->type)->check($m->load('user'));
         $this->assertTrue($result->isDown());
         $this->assertStringContainsString('private or reserved', $result->message);
+    }
+
+    public function test_unresolvable_host_fails_cleanly_without_php_warnings(): void
+    {
+        // Laravel turns warnings into exceptions in tests, so only CheckFailed may surface here.
+        $this->expectException(CheckFailed::class);
+        TargetGuard::resolve('does-not-exist.invalid', true);
     }
 }

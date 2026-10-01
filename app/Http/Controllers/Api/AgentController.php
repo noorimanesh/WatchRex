@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportServerSites;
 use App\Models\Server;
+use App\Models\ServerSite;
 use Illuminate\Http\Request;
 
 /** Receives reports from the WatchRex server agent (bash, no dependencies). */
@@ -117,6 +119,39 @@ class AgentController extends Controller
             'login_failed' => $latest['mail']['login_failed'],
         ]);
 
+        if (isset($p['sites']) && is_array($p['sites'])) {
+            $this->syncSites($server, $p['sites']);
+        }
+
         return response()->json(['ok' => true, 'interval' => $server->report_interval, 'accounts_every' => 1800]);
+    }
+
+    /** Upserts the sites reported by the agent; optionally auto-imports new ones. */
+    private function syncSites(Server $server, array $reported): void
+    {
+        $now = now();
+        $rows = [];
+        foreach (array_slice($reported, 0, 5000) as $s) {
+            $domain = strtolower(trim((string) ($s['domain'] ?? '')));
+            if (! preg_match('/^([a-z0-9-]+\.)+[a-z]{2,}$/', $domain) || strlen($domain) > 253) {
+                continue;
+            }
+            $kind = in_array($s['kind'] ?? 'main', ['main', 'addon', 'sub', 'alias', 'parked'], true) ? ($s['kind'] ?? 'main') : 'main';
+            $rows[$domain] = [
+                'server_id' => $server->id, 'domain' => $domain, 'account' => mb_substr((string) ($s['account'] ?? ''), 0, 64) ?: null,
+                'kind' => $kind === 'parked' ? 'alias' : $kind, 'first_seen_at' => $now, 'last_seen_at' => $now, 'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+
+        $before = $server->sites()->pluck('domain')->flip();
+        foreach (array_chunk(array_values($rows), 500) as $chunk) {
+            // first_seen_at is only written on insert.
+            ServerSite::upsert($chunk, ['server_id', 'domain'], ['account', 'kind', 'last_seen_at', 'updated_at']);
+        }
+
+        $new = array_diff_key($rows, $before->all());
+        if ($new && ($server->settings['auto_import'] ?? false)) {
+            ImportServerSites::dispatch($server->id, null, $server->settings['import_options'] ?? [])->onQueue(config('watchrex.queues.domains'));
+        }
     }
 }

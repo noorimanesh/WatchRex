@@ -1,11 +1,11 @@
-# WatchRex Agent for Windows Server 1.0 - Fabapars (https://fabapars.com)
+# WatchRex Agent for Windows Server 1.1 - Fabapars (https://fabapars.com)
 # Windows PowerShell 5.1+ - no modules required - runs as SYSTEM via Task Scheduler.
 # Uses non-localised CIM performance classes so it works on any Windows language.
 #Requires -Version 5.1
 $ErrorActionPreference = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
 
-$Version = '1.0.0'
+$Version = '1.1.0'
 $ConfigPath = Join-Path $env:ProgramData 'WatchRex\agent.json'
 $StatePath = Join-Path $env:ProgramData 'WatchRex\state.json'
 
@@ -131,6 +131,23 @@ $security = [ordered]@{
 }
 
 # -- Report -------------------------------------------------------------
+# -- Hosted sites (IIS host-header bindings), every 30 minutes -----------
+$sites = $null
+if (($Epoch - [int]$State.accounts_at) -ge 1800 -and (Get-Module -ListAvailable WebAdministration)) {
+    Import-Module WebAdministration
+    $hosts = @{}
+    foreach ($site in (Get-ChildItem IIS:\Sites)) {
+        foreach ($b in $site.Bindings.Collection) {
+            $hostName = ($b.bindingInformation -split ':')[-1].ToLower()
+            if ($hostName -match '^([a-z0-9-]+\.)+[a-z]{2,}$' -and -not $hosts.ContainsKey($hostName)) {
+                $hosts[$hostName] = [ordered]@{ domain = $hostName; account = $site.Name; kind = 'main' }
+            }
+        }
+    }
+    $sites = @($hosts.Values | Select-Object -First 5000)
+    $State.accounts_at = $Epoch
+}
+
 $report = [ordered]@{
     version = $Version
     platform = 'windows'
@@ -159,6 +176,7 @@ $report = [ordered]@{
     security = $security
     ssh_failed = $failed.Count
 }
+if ($null -ne $sites) { $report.sites = $sites }
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $body = [System.Text.Encoding]::UTF8.GetBytes(($report | ConvertTo-Json -Depth 6 -Compress))

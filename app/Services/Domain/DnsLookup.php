@@ -30,7 +30,7 @@ class DnsLookup
         $raw = @dns_get_record($host, $constant);
         $out = [];
 
-        foreach ((array) $raw as $r) {
+        foreach ($raw ?: [] as $r) {
             $value = match ($r['type'] ?? '') {
                 'A' => $r['ip'] ?? null,
                 'AAAA' => $r['ipv6'] ?? null,

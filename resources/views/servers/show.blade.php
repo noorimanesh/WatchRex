@@ -68,6 +68,8 @@
     </div>
 </div>
 
+@include('servers._sites')
+
 <div class="row between mt"><h2>{{ __('History') }}</h2><div class="seg">@foreach ([1, 6, 24, 72, 168] as $h)<a href="?hours={{ $h }}" class="{{ $hours === $h ? 'active' : '' }}">{{ $h < 24 ? $h.'h' : ($h / 24).'d' }}</a>@endforeach</div></div>
 <div class="grid g-2 mt">
     @foreach (['cpu' => ['CPU %', '#10b981'], 'ram' => ['RAM %', '#6366f1'], 'disk' => [__('Disk %'), '#f59e0b'], 'load1' => ['Load', '#0ea5e9']] as $k => [$label, $color])

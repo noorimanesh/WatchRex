@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# WatchRex Agent 1.0 — Fabapars (https://fabapars.com)
+# WatchRex Agent 1.1 — Fabapars (https://fabapars.com)
 # Dependency-free system, mail and hosting-panel collector. Reads /proc and logs
 # incrementally (byte offsets), so each run costs a few milliseconds of CPU.
 set -uo pipefail
 export LC_ALL=C PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 CONF=/etc/watchrex/agent.conf
 STATE=/var/lib/watchrex
 [ -f "$CONF" ] && . "$CONF"
@@ -163,9 +163,9 @@ TOP=""; while read -r user cpu mem cmd; do TOP+="{\"user\":\"$(esc "$user")\",\"
 TOP="[${TOP%,}]"
 
 # ── Hosting accounts & disk usage (every 30 min — heavier) ───────────────
-ACCOUNTS=""
+ACCOUNTS=""; SITES=""
 LAST_ACC=$(cat "$STATE/accounts.ts" 2>/dev/null || echo 0)
-if [ -n "$PANEL" ] && [ $((NOW-LAST_ACC)) -ge 1800 ]; then
+if [ $((NOW-LAST_ACC)) -ge 1800 ] || [ "${WATCHREX_FORCE_INVENTORY:-0}" = 1 ]; then
   A=""
   case "$PANEL" in
     cpanel)
@@ -193,7 +193,49 @@ if [ -n "$PANEL" ] && [ $((NOW-LAST_ACC)) -ge 1800 ]; then
       done < <(plesk db -N -e "SELECT su.login, d.name, d.real_size, d.status FROM domains d JOIN hosting h ON h.dom_id=d.id JOIN sys_users su ON su.id=h.sys_user_id" 2>/dev/null)
       ;;
   esac
-  ACCOUNTS=",\"accounts\":[${A%,}]"
+  [ -n "$PANEL" ] && ACCOUNTS=",\"accounts\":[${A%,}]"
+
+  # Every hosted site (domain|account|kind) so the hub can offer one-click monitoring.
+  : > "$TMP/sites"
+  case "$PANEL" in
+    cpanel)
+      if [ -r /etc/userdatadomains ]; then
+        # example.com: user==owner==main|addon|sub|parked==maindomain==docroot==...
+        awk -F'==' '{ split($1, a, ": "); print a[1]"|"a[2]"|"$3 }' /etc/userdatadomains >> "$TMP/sites"
+      else
+        awk -F': ' '$1 != "*" {print $1"|"$2"|main"}' /etc/userdomains 2>/dev/null >> "$TMP/sites"
+      fi
+      ;;
+    directadmin)
+      for dir in /usr/local/directadmin/data/users/*/; do
+        u=$(basename "$dir")
+        while read -r d; do
+          [ -z "$d" ] && continue
+          echo "$d|$u|main" >> "$TMP/sites"
+          [ -r "$dir/domains/$d.subdomains" ] && sed "s/\$/.$d|$u|sub/" "$dir/domains/$d.subdomains" >> "$TMP/sites"
+          [ -r "$dir/domains/$d.pointers" ] && cut -d= -f1 "$dir/domains/$d.pointers" | sed "s/\$/|$u|alias/" >> "$TMP/sites"
+        done < "$dir/domains.list" 2>/dev/null
+      done
+      ;;
+    plesk)
+      plesk db -N -e "SELECT d.name, IFNULL(su.login,''), IF(d.parentDomainId=0,'main','sub') FROM domains d LEFT JOIN hosting h ON h.dom_id=d.id LEFT JOIN sys_users su ON su.id=h.sys_user_id" 2>/dev/null | tr '\t' '|' >> "$TMP/sites"
+      plesk db -N -e "SELECT name, '', 'alias' FROM domain_aliases" 2>/dev/null | tr '\t' '|' >> "$TMP/sites"
+      ;;
+    *)
+      { command -v nginx >/dev/null 2>&1 && nginx -T 2>/dev/null | awk '/^[ \t]*server_name/ { for (i = 2; i <= NF; i++) { gsub(";", "", $i); print $i } }'
+        for bin in apachectl apache2ctl httpd; do command -v "$bin" >/dev/null 2>&1 && { "$bin" -S 2>/dev/null | awk '/namevhost|alias/ { print $NF }'; break; }; done
+      } | sed 's/|.*//' | awk '{print $1"||main"}' >> "$TMP/sites"
+      ;;
+  esac
+  SJ=""
+  while IFS='|' read -r d u k; do
+    d=$(printf '%s' "$d" | tr 'A-Z' 'a-z')
+    # Keep real hostnames only: no wildcards, IPs, localhost or panel service names.
+    case "$d" in ''|_|'*'*|localhost*|*.localdomain|*.local) continue ;; esac
+    [[ "$d" =~ ^([a-z0-9-]+\.)+[a-z]{2,}$ ]] || continue
+    SJ+="{\"domain\":\"$(esc "$d")\",\"account\":\"$(esc "$u")\",\"kind\":\"$(esc "${k:-main}")\"},"
+  done < <(sort -u -t'|' -k1,1 "$TMP/sites" | head -5000)
+  SITES=",\"sites\":[${SJ%,}]"
   echo "$NOW" > "$STATE/accounts.ts"
 fi
 
@@ -207,7 +249,7 @@ cat > "$TMP/report.json" <<JSON
 "mail":{"mta":"$MTA","queue":$(num "$QUEUE"),"sent":$(num "$SENT"),"received":$(num "$RECV"),"bounced":$(num "$BOUNCED"),
 "deferred":$(num "$DEFERRED"),"rejected":$(num "$REJECTED"),"login_ok":$(num "$LOGIN_OK"),"login_failed":$(num "$LOGIN_FAIL"),
 "failed_ips":$FAILED_IPS,"failed_users":$FAILED_USERS,"recent_bounces":$BJ},
-"ssh_failed":$(num "$SSH_FAILED")$ACCOUNTS}
+"ssh_failed":$(num "$SSH_FAILED")$ACCOUNTS$SITES}
 JSON
 
 curl -fsS -m 20 --retry 2 --retry-delay 3 \

@@ -111,3 +111,17 @@ document.addEventListener('input', function (e) {
     el.style.display = el.getAttribute('data-filter-item').indexOf(q) === -1 ? 'none' : '';
   });
 });
+
+/* Select-all checkbox: <input type="checkbox" data-check-all="name[]"> */
+document.addEventListener('change', function (e) {
+  var name = e.target.getAttribute && e.target.getAttribute('data-check-all');
+  if (!name) return;
+  var form = e.target.form || document;
+  form.querySelectorAll('input[type=checkbox][name="' + name + '"]').forEach(function (c) { c.checked = e.target.checked; });
+});
+
+/* Confirmation on individual submit buttons: <button data-confirm="…"> */
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('button[data-confirm]');
+  if (b && !confirm(b.getAttribute('data-confirm'))) e.preventDefault();
+});

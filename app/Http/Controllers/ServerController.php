@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MonitorType;
+use App\Jobs\ImportServerSites;
 use App\Models\AuditLog;
 use App\Models\Monitor;
+use App\Models\MonitorGroup;
 use App\Models\Server;
+use App\Services\GroupHealth;
 use App\Services\ServerHealth;
 use App\Support\Svg;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ServerController extends Controller
 {
@@ -85,7 +89,81 @@ class ServerController extends Controller
             'problems' => ServerHealth::problems($server),
             'monitor' => $server->monitors()->where('type', MonitorType::Server->value)->first(),
             'token' => session('agent_token'),
+            'sites' => $this->sites($request, $server),
+            'siteCounts' => [
+                'total' => $server->sites()->count(),
+                'monitored' => $server->sites()->whereNotNull('monitor_group_id')->count(),
+                'ignored' => $server->sites()->where('ignored', true)->count(),
+            ],
+            'siteHealth' => GroupHealth::for(MonitorGroup::whereIn('id', $server->sites()->whereNotNull('monitor_group_id')->pluck('monitor_group_id'))->get()),
         ]);
+    }
+
+    /** Bulk actions on discovered sites: import (monitor), ignore, un-ignore. */
+    public function sitesAction(Request $request, Server $server)
+    {
+        $this->authorizeOwner($server);
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['import', 'import_all', 'ignore', 'unignore'])],
+            'sites' => ['nullable', 'array'],
+            'sites.*' => ['integer'],
+            'website' => ['nullable', 'boolean'],
+            'domain' => ['nullable', 'boolean'],
+            'mail' => ['nullable', 'boolean'],
+            'interval' => ['nullable', 'integer', 'between:20,86400'],
+        ]);
+        $ids = $server->sites()->whereIn('id', $data['sites'] ?? [])->pluck('id')->all();
+        $options = [
+            'website' => $request->boolean('website'), 'domain' => $request->boolean('domain'),
+            'mail' => $request->boolean('mail'), 'interval' => (int) ($data['interval'] ?? 300),
+        ];
+
+        switch ($data['action']) {
+            case 'ignore':
+            case 'unignore':
+                $server->sites()->whereIn('id', $ids)->update(['ignored' => $data['action'] === 'ignore']);
+
+                return back()->with('success', __(':n site(s) updated.', ['n' => count($ids)]));
+            case 'import':
+                if (! $ids) {
+                    return back()->with('error', __('Select at least one site.'));
+                }
+                ImportServerSites::dispatch($server->id, $ids, $options)->onQueue(config('watchrex.queues.domains'));
+                break;
+            default:
+                ImportServerSites::dispatch($server->id, null, $options)->onQueue(config('watchrex.queues.domains'));
+        }
+
+        AuditLog::record('server.sites_import_requested', $server, ['sites' => $data['action'] === 'import' ? count($ids) : 'all'] + $options);
+
+        return back()->with('success', __('Import started. Groups and monitors appear within a minute.'));
+    }
+
+    public function siteSettings(Request $request, Server $server)
+    {
+        $this->authorizeOwner($server);
+        $server->forceFill(['settings' => array_merge($server->settings ?? [], [
+            'auto_import' => $request->boolean('auto_import'),
+            'import_options' => [
+                'website' => $request->boolean('website'), 'domain' => $request->boolean('domain'),
+                'mail' => $request->boolean('mail'), 'interval' => max(20, (int) $request->input('interval', 300)),
+            ],
+        ])])->save();
+
+        return back()->with('success', __('Saved.'));
+    }
+
+    private function sites(Request $request, Server $server)
+    {
+        $filter = $request->query('sites');
+
+        return $server->sites()->with('group:id,name')
+            ->when($request->query('site_q'), fn ($q, $t) => $q->where(fn ($q) => $q->where('domain', 'like', "%{$t}%")->orWhere('account', 'like', "%{$t}%")))
+            ->when($filter === 'monitored', fn ($q) => $q->whereNotNull('monitor_group_id'))
+            ->when($filter === 'new', fn ($q) => $q->whereNull('monitor_group_id')->where('ignored', false))
+            ->when($filter === 'ignored', fn ($q) => $q->where('ignored', true))
+            ->orderBy('account')->orderByRaw("CASE kind WHEN 'main' THEN 0 WHEN 'addon' THEN 1 WHEN 'sub' THEN 2 ELSE 3 END")->orderBy('domain')
+            ->paginate(100, ['*'], 'sites_page')->withQueryString();
     }
 
     public function edit(Server $server)
