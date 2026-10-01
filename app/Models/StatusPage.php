@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['team_id', 'slug', 'title', 'description', 'custom_domain', 'logo_url', 'accent', 'footer_text', 'is_public', 'show_uptime', 'show_response', 'hide_branding', 'allow_subscribers'])]
+#[Fillable(['team_id', 'slug', 'title', 'description', 'custom_domain', 'logo_url', 'accent', 'footer_text', 'is_public', 'show_uptime', 'show_response', 'hide_branding', 'allow_subscribers', 'settings'])]
 class StatusPage extends Model
 {
     use BelongsToTenant;

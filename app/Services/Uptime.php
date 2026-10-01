@@ -74,6 +74,64 @@ class Uptime
         });
     }
 
+    /**
+     * Daily bars for many monitors at once (one query).
+     *
+     * @param  list<int>  $ids
+     * @return array<int, Collection> monitor id => bars (oldest first)
+     */
+    public static function dailyBarsMany(array $ids, int $days = 90): array
+    {
+        $stats = MonitorDailyStat::whereIn('monitor_id', $ids ?: [0])
+            ->where('date', '>', now()->subDays($days)->toDateString())
+            ->get()->groupBy('monitor_id');
+
+        $out = [];
+        foreach ($ids as $id) {
+            $byDate = ($stats[$id] ?? collect())->keyBy(fn ($s) => $s->date->toDateString());
+            $out[$id] = self::bars($days, fn (string $date) => $byDate->get($date));
+        }
+
+        return $out;
+    }
+
+    /** One bar per day aggregated over a set of monitors (a group). */
+    public static function groupBars(array $ids, int $days = 90): Collection
+    {
+        $rows = MonitorDailyStat::whereIn('monitor_id', $ids ?: [0])
+            ->where('date', '>', now()->subDays($days)->toDateString())
+            ->groupBy('date')
+            ->selectRaw('date, SUM(up) as up, SUM(warning) as warning, SUM(down) as down, SUM(response_sum) as response_sum, SUM(response_count) as response_count')
+            ->get()
+            ->keyBy(fn ($r) => substr((string) $r->date, 0, 10));
+
+        return self::bars($days, fn (string $date) => $rows->get($date));
+    }
+
+    private static function bars(int $days, callable $lookup): Collection
+    {
+        return collect(range($days - 1, 0))->map(function ($ago) use ($lookup) {
+            $date = now()->subDays($ago)->toDateString();
+            $s = $lookup($date);
+            $counted = $s ? (int) $s->up + (int) $s->warning + (int) $s->down : 0;
+
+            return [
+                'date' => $date,
+                'uptime' => $counted ? round(((int) $s->up + (int) $s->warning) / $counted * 100, 3) : null,
+                'avg' => $s && $s->response_count ? (int) round($s->response_sum / $s->response_count) : null,
+                'down' => (int) ($s->down ?? 0),
+            ];
+        });
+    }
+
+    /** Average uptime over the bars that have data. */
+    public static function fromBars(Collection $bars): ?float
+    {
+        $values = $bars->pluck('uptime')->filter(fn ($v) => $v !== null);
+
+        return $values->count() ? round($values->avg(), 3) : null;
+    }
+
     /** Aggregated overall uptime across monitors for the dashboard. */
     public static function overall(array $ids, int $days = 30): ?float
     {

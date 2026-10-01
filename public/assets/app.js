@@ -4,7 +4,7 @@
   var root = document.documentElement;
 
   // Theme
-  try { var saved = localStorage.getItem('wr-theme'); if (saved) root.dataset.theme = saved; } catch (e) {}
+  if (!root.hasAttribute('data-theme-lock')) { try { var saved = localStorage.getItem('wr-theme'); if (saved) root.dataset.theme = saved; } catch (e) {} }
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-theme-toggle]');
     if (!t) return;
@@ -125,3 +125,27 @@ document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('button[data-confirm]');
   if (b && !confirm(b.getAttribute('data-confirm'))) e.preventDefault();
 });
+
+/* Status page filters: [data-sp-filter] chips → [data-sp-section] sections (hash keeps the selection) */
+(function () {
+  var box = document.querySelector('[data-sp-filters]');
+  if (!box) return;
+  function apply(f) {
+    var chip = box.querySelector('[data-sp-filter="' + f + '"]') || box.querySelector('[data-sp-filter="all"]');
+    f = chip.getAttribute('data-sp-filter');
+    box.querySelectorAll('[data-sp-filter]').forEach(function (c) { c.classList.toggle('active', c === chip); });
+    document.querySelectorAll('[data-sp-section]').forEach(function (s) {
+      var show = f === 'all' || (f === 'issues' ? s.getAttribute('data-sp-issue') === '1' : (s.getAttribute('data-sp-section') === f || s.getAttribute('data-sp-kind') === f));
+      s.classList.toggle('sp-hidden', !show);
+      if (show && f !== 'all' && f !== 'issues') { var d = s.querySelector('details'); if (d) d.open = true; }
+    });
+  }
+  box.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-sp-filter]');
+    if (!c) return;
+    var f = c.getAttribute('data-sp-filter');
+    history.replaceState(null, '', f === 'all' ? location.pathname + location.search : '#' + f);
+    apply(f);
+  });
+  if (location.hash) apply(location.hash.slice(1));
+})();
